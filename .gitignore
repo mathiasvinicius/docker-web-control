@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Application Data
+data/
+*.json.bak
+*.log
+*.pid
+
+# Uploaded Icons
+icons/*
+!icons/.gitkeep
+
+# Environment
+.env
+
+# Distribution
+dist/
+build/
+*.egg-info/

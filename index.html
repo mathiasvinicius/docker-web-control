@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Docker Web Control</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>🐳</text></svg>">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13.5 3h-3v3h3V3zm0 4h-3v3h3V7zm0 4h-3v3h3v-3zm4-8h-3v3h3V3zm0 4h-3v3h3V7zm0 4h-3v3h3v-3zm-8-8h-3v3h3V3zm0 4h-3v3h3V7zm-4-4h-3v3h3V3zm0 4h-3v3h3V7z" fill="currentColor"/>
+              <path d="M23.5 11.5c0-.8-.3-1.5-.8-2-.5-.5-1.2-.8-2-.8H19v-2c0-.6-.4-1-1-1h-6v3h5v2h-7.5c-.3 0-.5.2-.5.5v4c0 .3.2.5.5.5h3.4c.3 1.2 1.4 2 2.6 2s2.3-.8 2.6-2h1.4c1.1 0 2-.9 2-2v-2.2z" fill="currentColor"/>
+            </svg>
+            <div>
+              <h1 id="app-title" style="margin: 0;">Docker Web Control</h1>
+              <p id="app-subtitle" style="margin: 0; font-size: 0.875rem; opacity: 0.8;">Visualize, agrupe e automatize.</p>
+            </div>
+          </div>
+        </div>
+        <nav class="sidebar-nav">
+          <button class="nav-item active" data-view="containers" id="nav-containers">Containers</button>
+          <button class="nav-item" data-view="groups" id="nav-groups">Grupos</button>
+        </nav>
+        <div class="sidebar-lang">
+          <label class="language-select">
+            <span id="nav-language-label">Idioma</span>
+            <select id="lang-select">
+              <option value="pt-BR">Português (BR)</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+        </div>
+      </aside>
+      <main class="page-layout">
+        <section class="panel containers-panel view-panel" data-view="containers">
+          <div class="panel-header">
+            <h2>Containers</h2>
+            <div class="panel-actions">
+              <button id="refresh-containers" class="icon-button" title="Atualizar containers">↻</button>
+            </div>
+          </div>
+          <div class="filters">
+            <input
+              type="search"
+              id="filter-input"
+              placeholder="Filtrar por nome, imagem ou grupo"
+              aria-label="Filtro rápido"
+            />
+            <label class="inline">
+              <input type="checkbox" id="running-only" />
+              <span id="label-running-only">Mostrar somente ativos</span>
+            </label>
+          </div>
+          <div id="selection-info" class="selection-info"></div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>
+                    <input type="checkbox" id="select-all" aria-label="Selecionar todos" />
+                  </th>
+                  <th class="sortable" data-sort="name">
+                    <span id="th-name">Nome</span> <span class="sort-indicator"></span>
+                  </th>
+                  <th class="sortable" data-sort="image">
+                    <span id="th-image">Imagem</span> <span class="sort-indicator"></span>
+                  </th>
+                  <th class="sortable" data-sort="state">
+                    <span id="th-status">Status</span> <span class="sort-indicator"></span>
+                  </th>
+                  <th>
+                    <span id="th-ports">Ports</span>
+                  </th>
+                  <th class="sortable" data-sort="groups">
+                    <span id="th-groups">Grupos</span> <span class="sort-indicator"></span>
+                  </th>
+                  <th class="sortable" data-sort="autostart">
+                    <span id="th-autostart">Auto-start</span> <span class="sort-indicator"></span>
+                  </th>
+                  <th id="th-actions">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="containers-body"></tbody>
+            </table>
+          </div>
+          <div class="bulk-actions">
+            <div class="group-actions">
+              <form id="assign-group-form">
+                <label for="group-select">Adicionar aos selecionados:</label>
+                <select id="group-select"></select>
+                <button type="submit">Aplicar</button>
+              </form>
+            </div>
+            <div class="control-buttons">
+              <button data-action="start" class="ghost">Iniciar</button>
+              <button data-action="stop" class="ghost">Parar</button>
+              <button data-action="restart" class="ghost">Reiniciar</button>
+            </div>
+          </div>
+        </section>
+        <section class="panel groups-panel view-panel" data-view="groups">
+          <div class="panel-header">
+            <h2 id="groups-title">Grupos</h2>
+            <div class="panel-actions">
+              <button id="refresh-groups" class="icon-button" title="Atualizar grupos">↻</button>
+            </div>
+          </div>
+          <form id="create-group-form" class="inline-form">
+            <input type="text" id="new-group-name" placeholder="Nome do grupo" required />
+            <button type="submit" id="create-group-btn">Criar grupo</button>
+          </form>
+          <div id="groups-list" class="groups-list"></div>
+        </section>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>
