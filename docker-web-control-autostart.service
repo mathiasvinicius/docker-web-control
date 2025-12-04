@@ -1,0 +1,23 @@
+# Este arquivo é um exemplo. Durante a instalação com ./install.sh --system,
+# um arquivo será gerado automaticamente com os paths corretos.
+
+[Unit]
+Description=Docker Containers Autostart
+After=docker.service network.target
+Requires=docker.service
+Wants=docker-web-control.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/docker-web-control
+ExecStart=/usr/bin/python3 /opt/docker-web-control/autostart.py
+RemainAfterExit=yes
+StandardOutput=append:/opt/docker-web-control/autostart.log
+StandardError=append:/opt/docker-web-control/autostart.log
+
+# Aguarda um pouco para garantir que o Docker está completamente pronto
+ExecStartPre=/bin/sleep 5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,24 @@
+# Este arquivo é um exemplo. Durante a instalação com ./install.sh --system,
+# um arquivo será gerado automaticamente com os paths corretos.
+
+[Unit]
+Description=Docker Web Control Interface
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/docker-web-control
+ExecStart=/usr/bin/python3 /opt/docker-web-control/server.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/opt/docker-web-control/server.log
+StandardError=append:/opt/docker-web-control/server.log
+
+Environment="DOCKER_TIMEOUT=30"
+Environment="HOST=0.0.0.0"
+Environment="PORT=8088"
+
+[Install]
+WantedBy=multi-user.target

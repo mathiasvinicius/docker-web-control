@@ -1,0 +1,116 @@
+{
+  "pt-BR": {
+    "app": {
+      "title": "Docker Web Control",
+      "subtitle": "Visualize, agrupe e automatize.",
+      "refresh": "Atualizar"
+    },
+    "nav": {
+      "containers": "Containers",
+      "groups": "Grupos",
+      "language": "Idioma"
+    },
+    "filters": {
+      "search_placeholder": "Filtrar por nome, imagem ou grupo",
+      "running_only": "Mostrar somente ativos"
+    },
+    "table": {
+      "name": "Nome",
+      "image": "Imagem",
+      "status": "Status",
+      "ports": "Ports",
+      "groups": "Grupos",
+      "autostart": "Auto-start",
+      "actions": "Ações",
+      "empty": "Nenhum container encontrado."
+    },
+    "actions": {
+      "start": "Iniciar",
+      "stop": "Parar",
+      "restart": "Reiniciar",
+      "apply": "Aplicar",
+      "delete": "Excluir"
+    },
+    "groups": {
+      "title": "Grupos",
+      "create_placeholder": "Nome do grupo",
+      "create_button": "Criar grupo"
+    },
+    "autostart": {
+      "enabled": "Auto-start: Habilitado",
+      "disabled": "Auto-start: Desabilitado"
+    },
+    "alias": {
+      "label": "Apelido (opcional)",
+      "icon_label": "Ícone (URL) ex: http://icons.casaos.local/...",
+      "save": "Salvar",
+      "cancel": "Cancelar",
+      "rename": "Editar apelido"
+    },
+    "upload": {
+      "button": "📤 Upload",
+      "uploading": "⏳ Enviando...",
+      "success": "Ícone enviado com sucesso!",
+      "error": "Erro ao fazer upload do ícone",
+      "file_too_large": "Arquivo muito grande. Máximo: 5MB",
+      "title": "Upload icon image"
+    }
+  },
+  "en": {
+    "app": {
+      "title": "Docker Web Control",
+      "subtitle": "View, group, and automate.",
+      "refresh": "Refresh"
+    },
+    "nav": {
+      "containers": "Containers",
+      "groups": "Groups",
+      "language": "Language"
+    },
+    "filters": {
+      "search_placeholder": "Filter by name, image, or group",
+      "running_only": "Show only running"
+    },
+    "table": {
+      "name": "Name",
+      "image": "Image",
+      "status": "Status",
+      "ports": "Ports",
+      "groups": "Groups",
+      "autostart": "Auto-start",
+      "actions": "Actions",
+      "empty": "No containers found."
+    },
+    "actions": {
+      "start": "Start",
+      "stop": "Stop",
+      "restart": "Restart",
+      "apply": "Apply",
+      "delete": "Delete"
+    },
+    "groups": {
+      "title": "Groups",
+      "create_placeholder": "Group name",
+      "create_button": "Create group"
+    },
+    "autostart": {
+      "enabled": "Auto-start: Enabled",
+      "disabled": "Auto-start: Disabled"
+    },
+    "alias": {
+      "label": "Alias (optional)",
+      "icon_label": "Icon (URL) e.g., http://icons.casaos.local/...",
+      "save": "Save",
+      "cancel": "Cancel",
+      "rename": "Edit alias"
+    },
+    "upload": {
+      "button": "📤 Upload",
+      "uploading": "⏳ Uploading...",
+      "success": "Icon uploaded successfully!",
+      "error": "Error uploading icon",
+      "file_too_large": "File too large. Maximum: 5MB",
+      "title": "Upload icon image"
+    }
+  }
+}
