@@ -426,6 +426,20 @@ function renderTable() {
       } else {
         aliasInput.value = "";
       }
+
+      const aliasRow = document.createElement("div");
+      aliasRow.className = "icon-row";
+
+      const aliasSpacer = document.createElement("button");
+      aliasSpacer.type = "button";
+      aliasSpacer.className = "ghost small upload-placeholder";
+      aliasSpacer.textContent = "📤 Upload";
+      aliasSpacer.tabIndex = -1;
+      aliasSpacer.setAttribute("aria-hidden", "true");
+
+      aliasRow.appendChild(aliasInput);
+      aliasRow.appendChild(aliasSpacer);
+
       const iconInput = document.createElement("input");
       iconInput.type = "text";
       iconInput.placeholder = "Ícone (URL) ex: http://icons.casaos.local/...";
@@ -437,9 +451,7 @@ function renderTable() {
 
       // Container para o campo de ícone e botão de upload
       const iconContainer = document.createElement("div");
-      iconContainer.style.display = "flex";
-      iconContainer.style.gap = "0.5rem";
-      iconContainer.style.alignItems = "center";
+      iconContainer.className = "icon-row";
 
       // Botão de upload
       const uploadButton = document.createElement("button");
@@ -507,12 +519,15 @@ function renderTable() {
       cancelAlias.type = "button";
       cancelAlias.className = "ghost small";
       cancelAlias.textContent = "Cancelar";
-      aliasForm.appendChild(aliasInput);
-      aliasForm.appendChild(document.createElement("br"));
+
+      const actionsRow = document.createElement("div");
+      actionsRow.className = "alias-actions";
+      actionsRow.appendChild(saveAlias);
+      actionsRow.appendChild(cancelAlias);
+
+      aliasForm.appendChild(aliasRow);
       aliasForm.appendChild(iconContainer);
-      aliasForm.appendChild(document.createElement("br"));
-      aliasForm.appendChild(saveAlias);
-      aliasForm.appendChild(cancelAlias);
+      aliasForm.appendChild(actionsRow);
       nameCell.appendChild(aliasForm);
 
       renameButton.addEventListener("click", () => {
@@ -779,6 +794,20 @@ function renderGroups() {
     const aliasMetaForm = aliasMeta;
     aliasInput.value =
       aliasMetaForm && typeof aliasMetaForm === "object" ? aliasMetaForm.alias || "" : aliasMetaForm || "";
+
+    const aliasRowGroup = document.createElement("div");
+    aliasRowGroup.className = "icon-row";
+
+    const aliasSpacerGroup = document.createElement("button");
+    aliasSpacerGroup.type = "button";
+    aliasSpacerGroup.className = "ghost small upload-placeholder";
+    aliasSpacerGroup.textContent = "📤 Upload";
+    aliasSpacerGroup.tabIndex = -1;
+    aliasSpacerGroup.setAttribute("aria-hidden", "true");
+
+    aliasRowGroup.appendChild(aliasInput);
+    aliasRowGroup.appendChild(aliasSpacerGroup);
+
     const iconInput = document.createElement("input");
     iconInput.type = "text";
     iconInput.placeholder = "Ícone (URL) ex: http://icons.casaos.local/...";
@@ -786,9 +815,7 @@ function renderGroups() {
 
     // Container para o campo de ícone e botão de upload (groups)
     const iconContainerGroup = document.createElement("div");
-    iconContainerGroup.style.display = "flex";
-    iconContainerGroup.style.gap = "0.5rem";
-    iconContainerGroup.style.alignItems = "center";
+    iconContainerGroup.className = "icon-row";
 
     // Botão de upload para grupos
     const uploadButtonGroup = document.createElement("button");
@@ -856,12 +883,15 @@ function renderGroups() {
     cancelAlias.type = "button";
     cancelAlias.className = "ghost small";
     cancelAlias.textContent = "Cancelar";
-    aliasForm.appendChild(aliasInput);
-    aliasForm.appendChild(document.createElement("br"));
+
+    const actionsRowGroup = document.createElement("div");
+    actionsRowGroup.className = "alias-actions";
+    actionsRowGroup.appendChild(saveAlias);
+    actionsRowGroup.appendChild(cancelAlias);
+
+    aliasForm.appendChild(aliasRowGroup);
     aliasForm.appendChild(iconContainerGroup);
-    aliasForm.appendChild(document.createElement("br"));
-    aliasForm.appendChild(saveAlias);
-    aliasForm.appendChild(cancelAlias);
+    aliasForm.appendChild(actionsRowGroup);
     card.appendChild(aliasForm);
 
     renameButton.addEventListener("click", () => {

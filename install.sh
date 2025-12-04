@@ -11,6 +11,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_SYSTEM_INSTALL_DIR="/opt/docker-web-control"
 SYSTEM_MODE=false
+UPDATE_MODE=false
 
 # Service names
 MAIN_SERVICE_NAME="docker-web-control"
@@ -24,6 +25,10 @@ parse_arguments() {
         case $1 in
             --system)
                 SYSTEM_MODE=true
+                shift
+                ;;
+            --update)
+                UPDATE_MODE=true
                 shift
                 ;;
             --help|-h)
@@ -48,6 +53,7 @@ USAGE:
 
 OPTIONS:
     --system    Install system-wide to /opt/docker-web-control (requires sudo)
+    --update    Update existing installation (preserves data and config)
     --help      Show this help message
 
 INSTALLATION MODES:
@@ -64,12 +70,23 @@ INSTALLATION MODES:
        Recommended for production use
        Requires root/sudo privileges
 
+    3. Update Mode:
+       sudo ./install.sh --update
+
+       Updates code files in existing installation
+       Preserves: .env, data/, icons/, service configuration
+       Automatically detects installation location
+       Restarts service if running
+
 EXAMPLES:
     # Install in current directory
     ./install.sh
 
     # Install system-wide
     sudo ./install.sh --system
+
+    # Update existing installation
+    sudo ./install.sh --update
 
     # Get help
     ./install.sh --help
@@ -422,10 +439,150 @@ offer_systemd_installation() {
 }
 
 # ============================================================================
+# UPDATE MODE FUNCTIONS
+# ============================================================================
+detect_installation() {
+    # Try to detect existing installation
+    local detected_dir=""
+
+    # Check if service exists and get WorkingDirectory
+    if systemctl list-unit-files 2>/dev/null | grep -q "$MAIN_SERVICE_NAME.service"; then
+        detected_dir=$(systemctl cat "$MAIN_SERVICE_NAME" 2>/dev/null | grep "^WorkingDirectory=" | cut -d= -f2)
+    fi
+
+    # Check common locations
+    if [ -z "$detected_dir" ]; then
+        if [ -f "$DEFAULT_SYSTEM_INSTALL_DIR/server.py" ]; then
+            detected_dir="$DEFAULT_SYSTEM_INSTALL_DIR"
+        elif [ -f "$SCRIPT_DIR/server.py" ]; then
+            detected_dir="$SCRIPT_DIR"
+        fi
+    fi
+
+    echo "$detected_dir"
+}
+
+update_installation() {
+    echo "=========================================="
+    echo "Docker Web Control - Update Mode"
+    echo "=========================================="
+    echo ""
+
+    # Detect installation
+    INSTALL_DIR=$(detect_installation)
+
+    if [ -z "$INSTALL_DIR" ] || [ ! -d "$INSTALL_DIR" ]; then
+        echo "❌ Error: No existing installation found"
+        echo ""
+        echo "Tried locations:"
+        echo "  - $DEFAULT_SYSTEM_INSTALL_DIR"
+        echo "  - Current directory: $SCRIPT_DIR"
+        echo "  - Systemd service WorkingDirectory"
+        echo ""
+        echo "Please install first using:"
+        echo "  sudo ./install.sh --system"
+        exit 1
+    fi
+
+    echo "📍 Found installation at: $INSTALL_DIR"
+    echo ""
+
+    # Check if service is running
+    SERVICE_RUNNING=false
+    if systemctl is-active --quiet "$MAIN_SERVICE_NAME.service" 2>/dev/null; then
+        SERVICE_RUNNING=true
+        echo "🔄 Service is currently running"
+    fi
+
+    echo ""
+    echo "Update will:"
+    echo "  ✅ Update code files (server.py, autostart.py, config.py, etc.)"
+    echo "  ✅ Update static files (HTML, CSS, JS)"
+    echo "  ✅ Update documentation (README.md, etc.)"
+    echo "  ⚠️  Preserve: .env, data/, icons/"
+    if [ "$SERVICE_RUNNING" = true ]; then
+        echo "  🔄 Restart the service"
+    fi
+    echo ""
+    read -p "Continue with update? (y/n): " -n 1 -r
+    echo ""
+
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Update cancelled"
+        exit 0
+    fi
+
+    echo ""
+    echo "Updating files..."
+
+    # Core files
+    cp "$SCRIPT_DIR/server.py" "$INSTALL_DIR/"
+    cp "$SCRIPT_DIR/autostart.py" "$INSTALL_DIR/"
+    cp "$SCRIPT_DIR/config.py" "$INSTALL_DIR/"
+    cp "$SCRIPT_DIR/restart.sh" "$INSTALL_DIR/"
+    cp "$SCRIPT_DIR/index.html" "$INSTALL_DIR/"
+    cp "$SCRIPT_DIR/requirements.txt" "$INSTALL_DIR/"
+
+    # Documentation (optional)
+    cp "$SCRIPT_DIR/README.md" "$INSTALL_DIR/" 2>/dev/null || true
+    cp "$SCRIPT_DIR/AUTOSTART_SETUP.md" "$INSTALL_DIR/" 2>/dev/null || true
+    cp "$SCRIPT_DIR/LICENSE" "$INSTALL_DIR/" 2>/dev/null || true
+
+    # Static directory
+    if [ -d "$SCRIPT_DIR/static" ]; then
+        cp -r "$SCRIPT_DIR/static" "$INSTALL_DIR/" 2>/dev/null || true
+    fi
+
+    # Set permissions
+    chmod +x "$INSTALL_DIR"/server.py "$INSTALL_DIR"/autostart.py "$INSTALL_DIR"/restart.sh 2>/dev/null || true
+
+    echo "✅ Files updated"
+
+    # Restart service if it was running
+    if [ "$SERVICE_RUNNING" = true ]; then
+        echo ""
+        echo "Restarting service..."
+        systemctl restart "$MAIN_SERVICE_NAME.service"
+        sleep 2
+
+        if systemctl is-active --quiet "$MAIN_SERVICE_NAME.service"; then
+            echo "✅ Service restarted successfully"
+        else
+            echo "⚠️  Warning: Service may have failed to restart"
+            echo "Check status with: systemctl status $MAIN_SERVICE_NAME"
+        fi
+    fi
+
+    echo ""
+    echo "=========================================="
+    echo "✅ Update Complete!"
+    echo "=========================================="
+    echo ""
+    echo "Updated: $INSTALL_DIR"
+    echo ""
+    if [ "$SERVICE_RUNNING" = true ]; then
+        echo "Service status: Running"
+        echo "View logs: sudo journalctl -u $MAIN_SERVICE_NAME -f"
+    else
+        echo "Service status: Not running"
+        echo "Start with: sudo systemctl start $MAIN_SERVICE_NAME"
+    fi
+    echo ""
+    echo "Access: http://localhost:8088"
+    echo ""
+}
+
+# ============================================================================
 # MAIN INSTALLATION FLOW
 # ============================================================================
 main() {
     parse_arguments "$@"
+
+    # Handle update mode
+    if [ "$UPDATE_MODE" = true ]; then
+        update_installation
+        exit 0
+    fi
 
     echo "=========================================="
     echo "Docker Web Control - Installation"

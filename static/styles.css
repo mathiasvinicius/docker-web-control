@@ -389,10 +389,11 @@ tbody tr:hover {
 
 .alias-form {
   display: none;
-  gap: 0.35rem;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
   margin: 0.35rem 0 0.75rem;
-  max-width: 360px;
+  max-width: 420px;
 }
 
 .alias-form.visible {
@@ -404,9 +405,25 @@ tbody tr:hover {
   min-width: 0;
 }
 
-.alias-form br {
-  flex-basis: 100%;
-  height: 0;
+.alias-form .icon-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.alias-form .icon-row input {
+  width: 100%;
+}
+
+.alias-form .upload-placeholder {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.alias-form .alias-actions {
+  display: flex;
+  gap: 0.35rem;
 }
 
 .alias-form button {

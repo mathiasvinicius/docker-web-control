@@ -60,6 +60,25 @@ The system-wide installer will:
 
 Access at: `http://localhost:8088`
 
+## 🔄 Updating
+
+To update an existing installation to the latest version:
+
+```bash
+cd docker-web-control
+git pull
+sudo ./install.sh --update
+```
+
+The update mode will:
+- ✅ Detect your installation automatically
+- ✅ Update all code files (server.py, static files, etc.)
+- ✅ Preserve your configuration (.env)
+- ✅ Preserve your data (groups, aliases, icons)
+- ✅ Restart the service if it's running
+
+No need to reconfigure - just pull and update!
+
 ## ⚙️ Configuration
 
 Edit the `.env` file to customize settings:

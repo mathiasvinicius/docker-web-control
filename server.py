@@ -581,6 +581,7 @@ class DockerControlHandler(BaseHTTPRequestHandler):
 
     def _handle_upload_icon(self) -> None:
         """Handle icon file upload with multipart/form-data."""
+        import sys
         content_type = self.headers.get("Content-Type", "")
         if not content_type.startswith("multipart/form-data"):
             self._send_json({"error": "Content-Type must be multipart/form-data"}, code=400)
@@ -610,30 +611,70 @@ class DockerControlHandler(BaseHTTPRequestHandler):
 
         body = self.rfile.read(content_length)
 
+        # Debug logging
+        print(f"DEBUG: Content-Type: {content_type}", file=sys.stderr)
+        print(f"DEBUG: Boundary: {boundary}", file=sys.stderr)
+        print(f"DEBUG: Content-Length: {content_length}", file=sys.stderr)
+        print(f"DEBUG: Body length: {len(body)}", file=sys.stderr)
+
         # Parse multipart data
         boundary_bytes = f"--{boundary}".encode()
         parts = body.split(boundary_bytes)
+
+        # Debug: log parts information
+        print(f"DEBUG: Number of parts: {len(parts)}", file=sys.stderr)
+        for i, part in enumerate(parts):
+            print(f"DEBUG: Part {i} length: {len(part)}, has Content-Disposition: {b'Content-Disposition' in part}, has filename: {b'filename=' in part}", file=sys.stderr)
+            if b'Content-Disposition' in part:
+                print(f"DEBUG: Part {i} first 300 bytes: {part[:300]}", file=sys.stderr)
 
         file_data = None
         filename = None
 
         for part in parts:
-            if b"Content-Disposition" in part:
-                # Extract filename
-                disposition_line = part.split(b"\r\n")[0].decode("utf-8", errors="ignore")
-                if 'filename="' in disposition_line:
-                    start = disposition_line.index('filename="') + 10
-                    end = disposition_line.index('"', start)
-                    filename = disposition_line[start:end]
+            if b"Content-Disposition" in part and b'filename=' in part:
+                # Split by lines to find Content-Disposition header
+                lines = part.split(b"\r\n")
+
+                # Find the Content-Disposition line
+                disposition_line = None
+                for line in lines:
+                    if b"Content-Disposition" in line:
+                        disposition_line = line.decode("utf-8", errors="ignore")
+                        break
+
+                if disposition_line and 'filename=' in disposition_line:
+                    print(f"DEBUG: Found disposition line: {disposition_line}", file=sys.stderr)
+
+                    # Extract filename (handle both filename="x" and filename=x)
+                    if 'filename="' in disposition_line:
+                        start = disposition_line.index('filename="') + 10
+                        end = disposition_line.index('"', start)
+                        filename = disposition_line[start:end]
+                        print(f"DEBUG: Extracted quoted filename: {filename}", file=sys.stderr)
+                    elif 'filename=' in disposition_line:
+                        # Handle unquoted filename
+                        start = disposition_line.index('filename=') + 9
+                        # Find end (semicolon or end of line)
+                        rest = disposition_line[start:]
+                        if ';' in rest:
+                            filename = rest[:rest.index(';')].strip()
+                        else:
+                            filename = rest.strip()
+                        print(f"DEBUG: Extracted unquoted filename: {filename}", file=sys.stderr)
 
                     # Extract file content (after double CRLF)
                     content_start = part.find(b"\r\n\r\n")
+                    print(f"DEBUG: Content start position: {content_start}", file=sys.stderr)
                     if content_start != -1:
                         file_data = part[content_start + 4:]
                         # Remove trailing CRLF
                         if file_data.endswith(b"\r\n"):
                             file_data = file_data[:-2]
+                        print(f"DEBUG: Extracted file data length: {len(file_data)}", file=sys.stderr)
                     break
+
+        print(f"DEBUG: Final state - filename: {filename}, file_data length: {len(file_data) if file_data else 0}", file=sys.stderr)
 
         if not file_data or not filename:
             self._send_json({"error": "No file found in request"}, code=400)
