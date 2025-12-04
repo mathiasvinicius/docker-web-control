@@ -674,7 +674,6 @@ function renderTable() {
   }
 
   updateSelectAllState();
-}
 
   // Render pagination controls
   renderPaginationControls(allVisibleContainers.length);
