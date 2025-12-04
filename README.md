@@ -8,10 +8,7 @@
 
 ## 📸 Screenshots
 
-<!-- Add your screenshot here. You can upload an image to GitHub Issues and paste the URL -->
-<!-- Example: ![Main Interface](https://user-images.githubusercontent.com/.../screenshot.png) -->
-
-_Screenshot coming soon..._
+![Docker Web Control - Main Interface](docs/images/main-interface.png)
 
 ## ✨ Features
 
