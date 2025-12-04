@@ -13,6 +13,8 @@ const state = {
   sortBy: null, // Coluna atual de ordenação
   sortOrder: 'asc', // 'asc' ou 'desc'
   currentView: 'containers',
+  currentPage: 1,
+  itemsPerPage: 5,
 };
 
 const dom = {
@@ -53,6 +55,11 @@ const dom = {
   groupsTitle: document.getElementById("groups-title"),
   createGroupInput: document.getElementById("new-group-name"),
   createGroupBtn: document.getElementById("create-group-btn"),
+  paginationInfo: document.getElementById("pagination-info-text"),
+  prevPage: document.getElementById("prev-page"),
+  nextPage: document.getElementById("next-page"),
+  pageNumbers: document.getElementById("page-numbers"),
+  itemsPerPage: document.getElementById("items-per-page"),
 };
 
 let toastTimer;
@@ -187,6 +194,29 @@ function attachEvents() {
 
       render();
     });
+  });
+
+  // Paginação
+  dom.itemsPerPage.addEventListener("change", (event) => {
+    state.itemsPerPage = parseInt(event.target.value);
+    state.currentPage = 1; // Reset to first page
+    render();
+  });
+
+  dom.prevPage.addEventListener("click", () => {
+    if (state.currentPage > 1) {
+      state.currentPage--;
+      render();
+    }
+  });
+
+  dom.nextPage.addEventListener("click", () => {
+    const visible = getVisibleContainers();
+    const totalPages = Math.ceil(visible.length / state.itemsPerPage);
+    if (state.currentPage < totalPages) {
+      state.currentPage++;
+      render();
+    }
   });
 }
 
@@ -346,10 +376,27 @@ function updateSortIndicators() {
 }
 
 function renderTable() {
-  const containers = getVisibleContainers();
+  const allVisibleContainers = getVisibleContainers();
+
+  // Apply pagination
+  const totalItems = allVisibleContainers.length;
+  const totalPages = Math.ceil(totalItems / state.itemsPerPage);
+
+  // Ensure current page is valid
+  if (state.currentPage > totalPages && totalPages > 0) {
+    state.currentPage = totalPages;
+  }
+  if (state.currentPage < 1) {
+    state.currentPage = 1;
+  }
+
+  const startIndex = (state.currentPage - 1) * state.itemsPerPage;
+  const endIndex = startIndex + state.itemsPerPage;
+  const containers = allVisibleContainers.slice(startIndex, endIndex);
+
   dom.tableBody.innerHTML = "";
 
-  if (!containers.length) {
+  if (!allVisibleContainers.length) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 8;
@@ -627,6 +674,32 @@ function renderTable() {
   }
 
   updateSelectAllState();
+}
+
+  // Render pagination controls
+  renderPaginationControls(allVisibleContainers.length);
+}
+
+function renderPaginationControls(totalItems) {
+  const totalPages = Math.ceil(totalItems / state.itemsPerPage);
+  const startItem = totalItems === 0 ? 0 : (state.currentPage - 1) * state.itemsPerPage + 1;
+  const endItem = Math.min(state.currentPage * state.itemsPerPage, totalItems);
+
+  // Update info text
+  dom.paginationInfo.textContent = `Mostrando ${startItem}-${endItem} de ${totalItems}`;
+
+  // Update button states
+  dom.prevPage.disabled = state.currentPage === 1;
+  dom.nextPage.disabled = state.currentPage === totalPages || totalPages === 0;
+
+  // Update page numbers
+  dom.pageNumbers.innerHTML = "";
+  if (totalPages > 0) {
+    const pageSpan = document.createElement("span");
+    pageSpan.className = "page-info";
+    pageSpan.textContent = `Página ${state.currentPage} de ${totalPages}`;
+    dom.pageNumbers.appendChild(pageSpan);
+  }
 }
 
 function buildStatusPill(stateValue, statusText) {
