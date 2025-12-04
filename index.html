@@ -88,6 +88,27 @@
               <tbody id="containers-body"></tbody>
             </table>
           </div>
+          <div class="pagination-controls">
+            <div class="pagination-info">
+              <span id="pagination-info-text"></span>
+            </div>
+            <div class="pagination-buttons">
+              <button id="prev-page" class="ghost small">← Anterior</button>
+              <span id="page-numbers"></span>
+              <button id="next-page" class="ghost small">Próxima →</button>
+            </div>
+            <div class="pagination-per-page">
+              <label for="items-per-page">Itens por página:</label>
+              <select id="items-per-page">
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+          </div>
           <div class="bulk-actions">
             <div class="group-actions">
               <form id="assign-group-form">
