@@ -6,6 +6,13 @@
 ![Python](https://img.shields.io/badge/python-3.6%2B-blue)
 ![Docker](https://img.shields.io/badge/docker-required-blue)
 
+## 📸 Screenshots
+
+<!-- Add your screenshot here. You can upload an image to GitHub Issues and paste the URL -->
+<!-- Example: ![Main Interface](https://user-images.githubusercontent.com/.../screenshot.png) -->
+
+_Screenshot coming soon..._
+
 ## ✨ Features
 
 - 🐳 **Docker Container Management**: Start, stop, restart containers with a single click
