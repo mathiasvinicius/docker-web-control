@@ -506,7 +506,7 @@ class DockerControlHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "Aliases must be an object"}, code=400)
             return
         existing = self.server.container_alias_store.read()
-        merged = {**existing, **{k: str(v) for k, v in aliases.items()}}
+        merged = {**existing, **aliases}
         saved = self.server.container_alias_store.write(merged)
         self._send_json({"aliases": saved})
 
