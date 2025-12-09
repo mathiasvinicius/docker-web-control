@@ -60,6 +60,10 @@ const dom = {
   nextPage: document.getElementById("next-page"),
   pageNumbers: document.getElementById("page-numbers"),
   itemsPerPage: document.getElementById("items-per-page"),
+  // Mobile menu elements
+  mobileMenuToggle: document.getElementById("mobile-menu-toggle"),
+  sidebar: document.getElementById("sidebar"),
+  sidebarOverlay: document.getElementById("sidebar-overlay"),
 };
 
 let toastTimer;
@@ -218,6 +222,47 @@ function attachEvents() {
       render();
     }
   });
+
+  // Mobile menu toggle
+  if (dom.mobileMenuToggle && dom.sidebar && dom.sidebarOverlay) {
+    dom.mobileMenuToggle.addEventListener("click", () => {
+      toggleMobileMenu();
+    });
+
+    dom.sidebarOverlay.addEventListener("click", () => {
+      closeMobileMenu();
+    });
+
+    // Close menu when nav item is clicked
+    dom.navItems.forEach((button) => {
+      button.addEventListener("click", () => {
+        closeMobileMenu();
+      });
+    });
+  }
+}
+
+function toggleMobileMenu() {
+  const isOpen = dom.sidebar.classList.contains("open");
+  if (isOpen) {
+    closeMobileMenu();
+  } else {
+    openMobileMenu();
+  }
+}
+
+function openMobileMenu() {
+  dom.sidebar.classList.add("open");
+  dom.sidebarOverlay.classList.add("active");
+  dom.mobileMenuToggle.classList.add("active");
+  document.body.style.overflow = "hidden";
+}
+
+function closeMobileMenu() {
+  dom.sidebar.classList.remove("open");
+  dom.sidebarOverlay.classList.remove("active");
+  dom.mobileMenuToggle.classList.remove("active");
+  document.body.style.overflow = "";
 }
 
 async function loadAll() {
@@ -425,6 +470,7 @@ function renderTable() {
       row.appendChild(selectCell);
 
       const nameCell = document.createElement("td");
+      nameCell.setAttribute("data-label", t("table.name"));
       const nameRow = document.createElement("div");
       nameRow.className = "name-with-icon";
       const display = containerDisplay(container);
@@ -606,6 +652,7 @@ function renderTable() {
       row.appendChild(nameCell);
 
       const imageCell = document.createElement("td");
+      imageCell.setAttribute("data-label", t("table.image"));
       const imgBlock = document.createElement("div");
       imgBlock.textContent = container.image || "—";
 
@@ -628,14 +675,17 @@ function renderTable() {
       row.appendChild(imageCell);
 
       const statusCell = document.createElement("td");
+      statusCell.setAttribute("data-label", t("table.status"));
       statusCell.appendChild(buildStatusPill(container.state, container.status));
       row.appendChild(statusCell);
 
       const portsCell = document.createElement("td");
+      portsCell.setAttribute("data-label", t("table.ports"));
       portsCell.textContent = container.ports || "—";
       row.appendChild(portsCell);
 
       const groupsCell = document.createElement("td");
+      groupsCell.setAttribute("data-label", t("table.groups"));
       const groups = selectedGroups.get(container.id) || [];
       if (!groups.length) {
         groupsCell.textContent = "—";
@@ -659,6 +709,7 @@ function renderTable() {
       actions.forEach((action) => {
         const button = document.createElement("button");
         button.className = "ghost";
+        button.dataset.action = action;
         button.textContent =
           action === "start"
             ? t("actions.start")
@@ -848,7 +899,7 @@ function renderGroups() {
     const headerActions = document.createElement("div");
     headerActions.className = "group-card-header-actions";
     const deleteButton = document.createElement("button");
-    deleteButton.className = "ghost small";
+    deleteButton.className = "ghost small btn-delete";
     deleteButton.textContent = "Excluir";
     deleteButton.addEventListener("click", () => deleteGroup(name));
     headerActions.appendChild(deleteButton);
@@ -1071,6 +1122,7 @@ function renderGroupActionRow(groupName, hasAvailable) {
     if (!actions.includes(action)) return;
     const button = document.createElement("button");
     button.className = "ghost small";
+    button.dataset.action = action;
     button.textContent = label;
     button.disabled = !hasAvailable;
     button.addEventListener("click", () => handleGroupAction(groupName, action));
@@ -1414,6 +1466,7 @@ function applyAutostartButtonState(button, container, selectedGroups) {
 
 function renderAutostartCell(container, selectedGroups) {
   const cell = document.createElement("td");
+  cell.setAttribute("data-label", t("table.autostart"));
   cell.style.textAlign = "center";
   const groupsForContainer = selectedGroups.get(container.id) || [];
 
