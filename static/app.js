@@ -1,3 +1,8 @@
+// Constants
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const TOAST_DURATION = 4000;
+const DEBOUNCE_DELAY = 150;
+
 const state = {
   containers: [],
   groups: {},
@@ -10,11 +15,12 @@ const state = {
   runningOnly: false,
   activeGroup: null,
   autostart: { groups: [], containers: [] },
-  sortBy: null, // Coluna atual de ordenação
-  sortOrder: 'asc', // 'asc' ou 'desc'
+  sortBy: null,
+  sortOrder: 'asc',
   currentView: 'containers',
   currentPage: 1,
   itemsPerPage: 5,
+  isLoading: false,
 };
 
 const dom = {
@@ -43,7 +49,6 @@ const dom = {
   navGroups: document.getElementById("nav-groups"),
   appTitle: document.getElementById("app-title"),
   appSubtitle: document.getElementById("app-subtitle"),
-  filterInput: document.getElementById("filter-input"),
   labelRunningOnly: document.getElementById("label-running-only"),
   thName: document.getElementById("th-name"),
   thImage: document.getElementById("th-image"),
@@ -60,13 +65,36 @@ const dom = {
   nextPage: document.getElementById("next-page"),
   pageNumbers: document.getElementById("page-numbers"),
   itemsPerPage: document.getElementById("items-per-page"),
-  // Mobile menu elements
   mobileMenuToggle: document.getElementById("mobile-menu-toggle"),
   sidebar: document.getElementById("sidebar"),
   sidebarOverlay: document.getElementById("sidebar-overlay"),
 };
 
 let toastTimer;
+let filterDebounceTimer;
+
+// Utility: debounce function
+function debounce(func, delay) {
+  let timeoutId;
+  return function (...args) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func.apply(this, args), delay);
+  };
+}
+
+// Loading state management
+function setLoading(loading) {
+  state.isLoading = loading;
+  if (dom.refreshContainers) {
+    dom.refreshContainers.disabled = loading;
+    dom.refreshContainers.textContent = loading ? "⏳" : "↻";
+  }
+  if (dom.refreshGroups) {
+    dom.refreshGroups.disabled = loading;
+    dom.refreshGroups.textContent = loading ? "⏳" : "↻";
+  }
+}
+
 const defaultTranslations = {
   "pt-BR": {},
   en: {},
@@ -79,9 +107,15 @@ async function init() {
 }
 
 function attachEvents() {
+  // Debounced filter handler
+  const handleFilterChange = debounce(() => {
+    state.currentPage = 1;
+    render();
+  }, DEBOUNCE_DELAY);
+
   dom.filterInput.addEventListener("input", (event) => {
     state.filter = event.target.value.toLowerCase();
-    render();
+    handleFilterChange();
   });
 
   dom.runningOnly.addEventListener("change", (event) => {
@@ -105,25 +139,25 @@ function attachEvents() {
   dom.assignForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!state.groups || Object.keys(state.groups).length === 0) {
-      showToast("Crie um grupo antes de atribuir.", true);
+      showToast(t("groups.create_first"), true);
       return;
     }
     const target = dom.groupSelect.value;
     if (!target) {
-      showToast("Selecione um grupo para continuar.", true);
+      showToast(t("groups.select_group"), true);
       return;
     }
     if (!state.selected.size) {
-      showToast("Selecione ao menos um container.", true);
+      showToast(t("errors.select_container"), true);
       return;
     }
     const existing = new Set(state.groups[target] || []);
     state.selected.forEach((id) => existing.add(id));
     state.groups[target] = Array.from(existing);
     try {
-      await persistGroups("Grupos atualizados.");
+      await persistGroups(t("groups.updated"));
     } catch (error) {
-      showToast(error.message, true);
+      showToast(error.message || t("errors.save_failed"), true);
     }
   });
 
@@ -131,19 +165,19 @@ function attachEvents() {
     event.preventDefault();
     const name = dom.newGroupInput.value.trim();
     if (!name) {
-      showToast("O nome do grupo é obrigatório.", true);
+      showToast(t("groups.name_required"), true);
       return;
     }
     if (state.groups[name]) {
-      showToast("Já existe um grupo com esse nome.", true);
+      showToast(t("groups.already_exists"), true);
       return;
     }
     state.groups[name] = [];
     dom.newGroupInput.value = "";
     try {
-      await persistGroups("Grupo criado.");
+      await persistGroups(t("groups.created"));
     } catch (error) {
-      showToast(error.message, true);
+      showToast(error.message || t("errors.save_failed"), true);
     }
   });
 
@@ -266,6 +300,7 @@ function closeMobileMenu() {
 }
 
 async function loadAll() {
+  setLoading(true);
   try {
     const [containers, groupsResponse, autostart] = await Promise.all([
       loadContainers(),
@@ -280,7 +315,9 @@ async function loadAll() {
     cleanSelection();
     render();
   } catch (error) {
-    showToast(error.message || "Erro ao carregar dados.", true);
+    showToast(error.message || t("errors.load_failed"), true);
+  } finally {
+    setLoading(false);
   }
 }
 
@@ -299,7 +336,7 @@ async function loadContainers() {
   const response = await fetch("/api/containers");
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || "Falha ao listar containers");
+    throw new Error(data.error || t("errors.update_containers_failed"));
   }
   state.containerAliases = data.aliases || {};
   return data.containers || [];
@@ -309,7 +346,7 @@ async function loadGroups() {
   const response = await fetch("/api/groups");
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || "Falha ao carregar grupos");
+    throw new Error(data.error || t("errors.update_groups_failed"));
   }
   return {
     groups: data.groups || {},
@@ -344,7 +381,7 @@ async function loadAutostart() {
   const response = await fetch("/api/autostart");
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || "Falha ao carregar autostart");
+    throw new Error(data.error || t("errors.load_failed"));
   }
   return data.autostart || { groups: [], containers: [] };
 }
@@ -370,7 +407,7 @@ async function setRestartPolicy(containerId, policy) {
   });
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.details || data.error || "Falha ao atualizar restart policy.");
+    throw new Error(data.details || data.error || t("errors.save_failed"));
   }
   return data.restart_policy || policy;
 }
@@ -565,9 +602,8 @@ function renderTable() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate file size (5MB max)
-        if (file.size > 5 * 1024 * 1024) {
-          showToast("Arquivo muito grande. Máximo: 5MB", true);
+        if (file.size > MAX_FILE_SIZE) {
+          showToast(t("errors.file_too_large"), true);
           return;
         }
 
@@ -586,13 +622,13 @@ function renderTable() {
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.error || "Erro ao fazer upload");
+            throw new Error(data.error || t("upload.error"));
           }
 
           iconInput.value = data.url;
-          showToast("Ícone enviado com sucesso!", false);
+          showToast(t("upload.success"), false);
         } catch (error) {
-          showToast(error.message || "Erro ao fazer upload do ícone", true);
+          showToast(error.message || t("upload.error"), true);
         } finally {
           uploadButton.disabled = false;
           uploadButton.textContent = "📤 Upload";
@@ -644,9 +680,9 @@ function renderTable() {
         try {
           await saveContainerAlias(container.id, trimmed, iconTrimmed);
           aliasForm.classList.remove("visible");
-          render(); // re-render para aplicar apelido
+          render();
         } catch (error) {
-          showToast(error.message || "Erro ao salvar apelido.", true);
+          showToast(error.message || t("errors.save_alias_failed"), true);
         }
       });
       row.appendChild(nameCell);
@@ -778,7 +814,7 @@ function renderGroups() {
 
   if (!names.length) {
     const empty = document.createElement("p");
-    empty.textContent = "Nenhum grupo cadastrado.";
+    empty.textContent = t("groups.no_group");
     dom.groupsList.appendChild(empty);
     dom.groupSelect.disabled = true;
     return;
@@ -836,7 +872,7 @@ function renderGroups() {
     const isGroupEnabled = state.autostart.groups.includes(name);
     const autostartButton = document.createElement("button");
     autostartButton.className = `group-autostart-toggle ${isGroupEnabled ? 'enabled' : 'disabled'}`;
-    autostartButton.textContent = isGroupEnabled ? "Auto-start: Habilitado" : "Auto-start: Desabilitado";
+    autostartButton.textContent = isGroupEnabled ? t("autostart.enabled") : t("autostart.disabled");
     autostartButton.title = "Clique para alterar auto-start do grupo";
     autostartButton.addEventListener("click", async (event) => {
       const currentEnabled = state.autostart.groups.includes(name);
@@ -858,7 +894,7 @@ function renderGroups() {
       }
       const newEnabled = !currentEnabled;
       button.disabled = true;
-      button.textContent = newEnabled ? "Auto-start: Habilitado" : "Auto-start: Desabilitado";
+      button.textContent = newEnabled ? t("autostart.enabled") : t("autostart.disabled");
       button.className = `group-autostart-toggle ${newEnabled ? 'enabled' : 'disabled'}`;
 
       try {
@@ -872,9 +908,9 @@ function renderGroups() {
             if (c) c.restart_policy = newPolicy;
           });
         }
-        showToast(`Auto-start do grupo ${newEnabled ? 'habilitado' : 'desabilitado'}`);
+        showToast(newEnabled ? t("autostart.group_enabled") : t("autostart.group_disabled"));
       } catch (error) {
-        showToast(error.message || "Erro ao salvar", true);
+        showToast(error.message || t("errors.save_failed"), true);
         // Reverter grupo e restart policy (best effort)
         state.autostart.groups = previousGroups;
         if (containerIds.length) {
@@ -889,7 +925,7 @@ function renderGroups() {
             if (c) c.restart_policy = previousPolicies[id] || c.restart_policy;
           });
         }
-        button.textContent = currentEnabled ? "Auto-start: Habilitado" : "Auto-start: Desabilitado";
+        button.textContent = currentEnabled ? t("autostart.enabled") : t("autostart.disabled");
         button.className = `group-autostart-toggle ${currentEnabled ? 'enabled' : 'disabled'}`;
       }
       button.disabled = false;
@@ -959,9 +995,8 @@ function renderGroups() {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        showToast("Arquivo muito grande. Máximo: 5MB", true);
+      if (file.size > MAX_FILE_SIZE) {
+        showToast(t("errors.file_too_large"), true);
         return;
       }
 
@@ -980,16 +1015,16 @@ function renderGroups() {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || "Erro ao fazer upload");
+          throw new Error(data.error || t("upload.error"));
         }
 
         iconInput.value = data.url;
-        showToast("Ícone enviado com sucesso!", false);
+        showToast(t("upload.success"), false);
       } catch (error) {
-        showToast(error.message || "Erro ao fazer upload do ícone", true);
+        showToast(error.message || t("upload.error"), true);
       } finally {
         uploadButtonGroup.disabled = false;
-        uploadButtonGroup.textContent = "📤 Upload";
+        uploadButtonGroup.textContent = t("upload.button");
         fileInputGroup.value = "";
       }
     });
@@ -1001,11 +1036,11 @@ function renderGroups() {
     const saveAlias = document.createElement("button");
     saveAlias.type = "submit";
     saveAlias.className = "ghost small";
-    saveAlias.textContent = "Salvar";
+    saveAlias.textContent = t("alias.save");
     const cancelAlias = document.createElement("button");
     cancelAlias.type = "button";
     cancelAlias.className = "ghost small";
-    cancelAlias.textContent = "Cancelar";
+    cancelAlias.textContent = t("alias.cancel");
 
     const actionsRowGroup = document.createElement("div");
     actionsRowGroup.className = "alias-actions";
@@ -1036,7 +1071,7 @@ function renderGroups() {
         await renameGroup(name, trimmed, iconTrimmed);
         aliasForm.classList.remove("visible");
       } catch (error) {
-        showToast(error.message || "Erro ao renomear grupo.", true);
+        showToast(error.message || t("errors.rename_group_failed"), true);
       }
     });
 
@@ -1096,7 +1131,7 @@ function renderGroups() {
     const hasAvailable = getGroupContainerIds(name).length > 0;
     if (!list.childElementCount) {
       const empty = document.createElement("p");
-      empty.textContent = "Nenhum container neste grupo.";
+      empty.textContent = t("groups.no_containers");
       card.appendChild(renderGroupActionRow(name, hasAvailable));
       card.appendChild(empty);
     } else {
@@ -1242,12 +1277,8 @@ function applyAutoGrouping(silent = false) {
   });
 
   if (created > 0 || updated > 0) {
-    const message =
-      created || updated
-        ? `Agrupamento automático atualizado (${created} criado${created === 1 ? "" : "s"}, ${updated} preenchido${updated === 1 ? "" : "s"}).`
-        : null;
-    persistGroups(silent ? null : message).catch(
-      (error) => showToast(error.message || "Erro ao agrupar automaticamente.", true)
+    persistGroups(silent ? null : t("groups.updated")).catch(
+      (error) => showToast(error.message || t("errors.save_failed"), true)
     );
   }
 }
@@ -1432,13 +1463,13 @@ function getAutostartStatus(container, selectedGroups) {
 
 function applyAutostartButtonState(button, container, selectedGroups) {
   const status = getAutostartStatus(container, selectedGroups);
-  let label = "Desabilitado";
+  let label = t("autostart.disabled");
   if (status.enabledIndividually) {
-    label = "Habilitado (individual)";
+    label = t("autostart.enabled_individual");
   } else if (status.enabledGroups.length) {
-    label = "Habilitado (grupo)";
+    label = t("autostart.enabled_group");
   } else if (status.enabledByDocker) {
-    label = "Habilitado (Docker)";
+    label = t("autostart.enabled_docker");
   }
   button.textContent = label;
   button.className = `autostart-toggle ${status.enabled ? "enabled" : "disabled"}`;
@@ -1506,13 +1537,13 @@ function renderAutostartCell(container, selectedGroups) {
       const status = applyAutostartButtonState(button, container, selectedGroups);
       const toastMsg =
         status.enabledByDocker && !status.enabledIndividually && !status.enabledGroups.length
-          ? "Auto-start ativo pelo Docker (restart policy)"
+          ? t("autostart.docker_active")
           : status.enabled
-          ? "Auto-start habilitado"
-          : "Auto-start desabilitado";
+          ? t("autostart.container_enabled")
+          : t("autostart.container_disabled");
       showToast(toastMsg);
     } catch (error) {
-      showToast(error.message || "Erro ao salvar", true);
+      showToast(error.message || t("errors.save_failed"), true);
       state.autostart.containers = previous;
       container.restart_policy = previousPolicy;
       applyAutostartButtonState(button, container, selectedGroups);
@@ -1554,45 +1585,46 @@ function updateSelectAllState() {
 async function handleAction(containerId, action) {
   try {
     await controlContainer(containerId, action);
-    showToast(`Ação "${action}" enviada.`);
+    showToast(t("messages.action_sent"));
     await loadContainersOnly();
   } catch (error) {
-    showToast(error.message || "Falha ao executar ação.", true);
+    showToast(error.message || t("errors.action_failed"), true);
   }
 }
 
 async function handleBulkAction(action) {
   if (!state.selected.size) {
-    showToast("Selecione ao menos um container.", true);
+    showToast(t("errors.select_container"), true);
     return;
   }
   try {
     await Promise.all(
       Array.from(state.selected).map((id) => controlContainer(id, action))
     );
-    showToast(`Ação ${action} aplicada.`);
+    showToast(t("messages.action_applied"));
     await loadContainersOnly();
   } catch (error) {
-    showToast(error.message || "Erro ao executar ação.", true);
+    showToast(error.message || t("errors.action_failed"), true);
   }
 }
 
 async function handleGroupAction(groupName, action) {
   const ids = getGroupContainerIds(groupName);
   if (!ids.length) {
-    showToast("Nenhum container disponível neste grupo.", true);
+    showToast(t("errors.no_containers_group"), true);
     return;
   }
   try {
     await Promise.all(ids.map((id) => controlContainer(id, action)));
-    showToast(`Ação ${action} enviada para ${groupName}.`);
+    showToast(t("messages.action_sent_to_group"));
     await loadContainersOnly();
   } catch (error) {
-    showToast(error.message || "Erro ao aplicar ação no grupo.", true);
+    showToast(error.message || t("errors.action_failed"), true);
   }
 }
 
 async function loadContainersOnly() {
+  setLoading(true);
   try {
     state.containers = await loadContainers();
     applyAutoGrouping(true);
@@ -1601,7 +1633,9 @@ async function loadContainersOnly() {
     renderGroups();
     renderSelectionInfo();
   } catch (error) {
-    showToast(error.message || "Falha ao atualizar containers.", true);
+    showToast(error.message || t("errors.update_containers_failed"), true);
+  } finally {
+    setLoading(false);
   }
 }
 
@@ -1610,6 +1644,7 @@ async function refreshContainersView() {
 }
 
 async function refreshGroupsView() {
+  setLoading(true);
   try {
     const groupsResponse = await loadGroups();
     state.groups = groupsResponse.groups;
@@ -1618,7 +1653,9 @@ async function refreshGroupsView() {
     renderGroups();
     renderTable();
   } catch (error) {
-    showToast(error.message || "Falha ao atualizar grupos.", true);
+    showToast(error.message || t("errors.update_groups_failed"), true);
+  } finally {
+    setLoading(false);
   }
 }
 
@@ -1637,9 +1674,9 @@ async function deleteGroup(name) {
   delete state.groups[name];
   delete state.groupAliases[name];
   try {
-    await persistGroups("Grupo removido.");
+    await persistGroups(t("groups.removed"));
   } catch (error) {
-    showToast(error.message, true);
+    showToast(error.message || t("errors.save_failed"), true);
   }
 }
 
@@ -1647,9 +1684,9 @@ async function removeFromGroup(groupName, containerId) {
   const group = state.groups[groupName] || [];
   state.groups[groupName] = group.filter((id) => id !== containerId);
   try {
-    await persistGroups("Container removido do grupo.");
+    await persistGroups(t("groups.container_removed"));
   } catch (error) {
-    showToast(error.message, true);
+    showToast(error.message || t("errors.save_failed"), true);
   }
 }
 
@@ -1663,7 +1700,7 @@ async function renameGroup(name, aliasValue, iconValue) {
     if (trimmed) state.groupAliases[name].alias = trimmed;
     if (iconTrimmed) state.groupAliases[name].icon = iconTrimmed;
   }
-  await persistGroups("Grupo renomeado (apelido/ícone atualizado).");
+  await persistGroups(t("groups.renamed"));
 }
 
 function showToast(message, isError = false) {
@@ -1674,7 +1711,7 @@ function showToast(message, isError = false) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     dom.toast.classList.remove("visible");
-  }, 4000);
+  }, TOAST_DURATION);
 }
 
 init();

@@ -34,11 +34,31 @@
     "groups": {
       "title": "Grupos",
       "create_placeholder": "Nome do grupo",
-      "create_button": "Criar grupo"
+      "create_button": "Criar grupo",
+      "updated": "Grupos atualizados.",
+      "created": "Grupo criado.",
+      "removed": "Grupo removido.",
+      "container_removed": "Container removido do grupo.",
+      "renamed": "Grupo renomeado.",
+      "no_group": "Nenhum grupo cadastrado.",
+      "no_containers": "Nenhum container neste grupo.",
+      "select_group": "Selecione um grupo para continuar.",
+      "create_first": "Crie um grupo antes de atribuir.",
+      "already_exists": "Já existe um grupo com esse nome.",
+      "name_required": "O nome do grupo é obrigatório."
     },
     "autostart": {
       "enabled": "Auto-start: Habilitado",
-      "disabled": "Auto-start: Desabilitado"
+      "disabled": "Auto-start: Desabilitado",
+      "enabled_group": "Habilitado (grupo)",
+      "disabled_group": "Desabilitado (grupo)",
+      "enabled_individual": "Habilitado (individual)",
+      "enabled_docker": "Habilitado (Docker)",
+      "group_enabled": "Auto-start do grupo habilitado",
+      "group_disabled": "Auto-start do grupo desabilitado",
+      "container_enabled": "Auto-start habilitado",
+      "container_disabled": "Auto-start desabilitado",
+      "docker_active": "Auto-start ativo pelo Docker (restart policy)"
     },
     "alias": {
       "label": "Apelido (opcional)",
@@ -52,8 +72,40 @@
       "uploading": "⏳ Enviando...",
       "success": "Ícone enviado com sucesso!",
       "error": "Erro ao fazer upload do ícone",
-      "file_too_large": "Arquivo muito grande. Máximo: 5MB",
       "title": "Upload icon image"
+    },
+    "errors": {
+      "load_failed": "Erro ao carregar dados.",
+      "update_containers_failed": "Falha ao atualizar containers.",
+      "update_groups_failed": "Falha ao atualizar grupos.",
+      "action_failed": "Falha ao executar ação.",
+      "save_failed": "Erro ao salvar.",
+      "docker_error": "Erro ao comunicar com o Docker.",
+      "select_container": "Selecione ao menos um container.",
+      "no_containers_group": "Nenhum container disponível neste grupo.",
+      "file_too_large": "Arquivo muito grande. Máximo: 5MB",
+      "save_alias_failed": "Erro ao salvar apelido.",
+      "rename_group_failed": "Erro ao renomear grupo."
+    },
+    "messages": {
+      "action_sent": "Ação enviada.",
+      "action_applied": "Ação aplicada.",
+      "action_sent_to_group": "Ação enviada para o grupo."
+    },
+    "pagination": {
+      "showing": "Mostrando",
+      "of": "de",
+      "page": "Página",
+      "prev": "← Anterior",
+      "next": "Próxima →",
+      "items_per_page": "Itens por página:"
+    },
+    "selection": {
+      "container": "container",
+      "containers": "containers",
+      "selected": "selecionado",
+      "selected_plural": "selecionados",
+      "add_to_selected": "Adicionar aos selecionados:"
     }
   },
   "en": {
@@ -91,11 +143,31 @@
     "groups": {
       "title": "Groups",
       "create_placeholder": "Group name",
-      "create_button": "Create group"
+      "create_button": "Create group",
+      "updated": "Groups updated.",
+      "created": "Group created.",
+      "removed": "Group removed.",
+      "container_removed": "Container removed from group.",
+      "renamed": "Group renamed.",
+      "no_group": "No groups registered.",
+      "no_containers": "No containers in this group.",
+      "select_group": "Select a group to continue.",
+      "create_first": "Create a group before assigning.",
+      "already_exists": "A group with this name already exists.",
+      "name_required": "Group name is required."
     },
     "autostart": {
       "enabled": "Auto-start: Enabled",
-      "disabled": "Auto-start: Disabled"
+      "disabled": "Auto-start: Disabled",
+      "enabled_group": "Enabled (group)",
+      "disabled_group": "Disabled (group)",
+      "enabled_individual": "Enabled (individual)",
+      "enabled_docker": "Enabled (Docker)",
+      "group_enabled": "Group auto-start enabled",
+      "group_disabled": "Group auto-start disabled",
+      "container_enabled": "Auto-start enabled",
+      "container_disabled": "Auto-start disabled",
+      "docker_active": "Auto-start active via Docker (restart policy)"
     },
     "alias": {
       "label": "Alias (optional)",
@@ -109,8 +181,40 @@
       "uploading": "⏳ Uploading...",
       "success": "Icon uploaded successfully!",
       "error": "Error uploading icon",
-      "file_too_large": "File too large. Maximum: 5MB",
       "title": "Upload icon image"
+    },
+    "errors": {
+      "load_failed": "Error loading data.",
+      "update_containers_failed": "Failed to update containers.",
+      "update_groups_failed": "Failed to update groups.",
+      "action_failed": "Failed to execute action.",
+      "save_failed": "Error saving.",
+      "docker_error": "Error communicating with Docker.",
+      "select_container": "Select at least one container.",
+      "no_containers_group": "No containers available in this group.",
+      "file_too_large": "File too large. Maximum: 5MB",
+      "save_alias_failed": "Error saving alias.",
+      "rename_group_failed": "Error renaming group."
+    },
+    "messages": {
+      "action_sent": "Action sent.",
+      "action_applied": "Action applied.",
+      "action_sent_to_group": "Action sent to group."
+    },
+    "pagination": {
+      "showing": "Showing",
+      "of": "of",
+      "page": "Page",
+      "prev": "← Previous",
+      "next": "Next →",
+      "items_per_page": "Items per page:"
+    },
+    "selection": {
+      "container": "container",
+      "containers": "containers",
+      "selected": "selected",
+      "selected_plural": "selected",
+      "add_to_selected": "Add to selected:"
     }
   }
 }
