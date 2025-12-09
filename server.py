@@ -15,6 +15,7 @@ import threading
 import hashlib
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
 from pathlib import Path
 from typing import Dict, List
 from urllib.parse import urlparse, parse_qs
