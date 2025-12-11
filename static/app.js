@@ -462,7 +462,8 @@ function renderTable() {
 }
 
 function renderTableHierarchical() {
-  const allVisibleContainers = getVisibleContainers();
+  // Include grouped containers for hierarchical view
+  const allVisibleContainers = getVisibleContainers(true);
   dom.tableBody.innerHTML = "";
 
   if (!allVisibleContainers.length) {
@@ -1982,7 +1983,7 @@ function sortContainers(containers, sortBy, sortOrder, selectedGroups) {
   return sorted;
 }
 
-function getVisibleContainers() {
+function getVisibleContainers(includeGrouped = false) {
   const term = state.filter;
   const runningOnly = state.runningOnly;
   const selectedGroups = invertGroups();
@@ -1994,7 +1995,8 @@ function getVisibleContainers() {
 
   let filtered = state.containers.filter((container) => {
     // Containers que pertencem a grupos ficam ocultos na lista principal
-    if (groupedIds.has(container.id)) return false;
+    // EXCETO quando includeGrouped=true (para tabela hierárquica)
+    if (!includeGrouped && groupedIds.has(container.id)) return false;
 
     if (runningOnly && container.state !== "running") {
       return false;
