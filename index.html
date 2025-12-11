@@ -24,7 +24,7 @@
         </div>
         <nav class="sidebar-nav">
           <button class="nav-item active" data-view="containers" id="nav-containers">Containers</button>
-          <button class="nav-item" data-view="groups" id="nav-groups">Grupos</button>
+          <button class="nav-item" data-view="groups" id="nav-groups" style="display: none;">Grupos</button>
         </nav>
         <div class="sidebar-lang">
           <label class="language-select">
@@ -69,7 +69,7 @@
             </label>
           </div>
           <div id="selection-info" class="selection-info"></div>
-          <div class="table-wrapper">
+          <div class="table-wrapper" id="table-view">
             <table>
               <thead>
                 <tr>
@@ -100,7 +100,7 @@
               <tbody id="containers-body"></tbody>
             </table>
           </div>
-          <div class="pagination-controls">
+          <div class="pagination-controls" id="pagination-controls">
             <div class="pagination-info">
               <span id="pagination-info-text"></span>
             </div>
@@ -121,7 +121,7 @@
               </select>
             </div>
           </div>
-          <div class="bulk-actions">
+          <div class="bulk-actions" id="bulk-actions">
             <div class="group-actions">
               <form id="assign-group-form">
                 <label for="group-select">Adicionar aos selecionados:</label>

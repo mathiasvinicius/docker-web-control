@@ -414,11 +414,22 @@ function setViewMode(mode, savePreference = true) {
     dom.toggleCards.classList.toggle('active', mode === 'cards');
   }
 
-  // Toggle visibility
-  const tableView = document.getElementById('containers-view');
+  // Toggle visibility of table elements
+  const tableView = document.getElementById('table-view');
+  const paginationControls = document.getElementById('pagination-controls');
+  const bulkActions = document.getElementById('bulk-actions');
+
   if (tableView) {
     tableView.style.display = mode === 'table' ? 'block' : 'none';
   }
+  if (paginationControls) {
+    paginationControls.style.display = mode === 'table' ? 'flex' : 'none';
+  }
+  if (bulkActions) {
+    bulkActions.style.display = mode === 'table' ? 'block' : 'none';
+  }
+
+  // Toggle visibility of cards view
   if (dom.cardsView) {
     dom.cardsView.style.display = mode === 'cards' ? 'block' : 'none';
   }
