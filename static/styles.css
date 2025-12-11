@@ -1008,3 +1008,521 @@ tbody tr:hover {
     justify-content: center;
   }
 }
+
+/* ============================================
+   GLASSMORPHISM & VIEW MODE TOGGLE
+============================================ */
+
+/* Glass effects for panels */
+.panel {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.sidebar {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.table-wrapper {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* View Mode Toggle */
+.view-mode-toggle {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: rgba(13, 31, 44, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(34, 211, 238, 0.12);
+  border-radius: 12px;
+  align-items: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.view-mode-toggle label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #22d3ee;
+  margin-right: 0.5rem;
+}
+
+.view-toggle-button {
+  padding: 0.6rem 1.2rem;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  color: #e8f5ff;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.view-toggle-button:hover {
+  background: rgba(34, 211, 238, 0.1);
+  border-color: rgba(34, 211, 238, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(34, 211, 238, 0.2);
+}
+
+.view-toggle-button.active {
+  background: rgba(34, 211, 238, 0.2);
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 4px 16px rgba(34, 211, 238, 0.3);
+  transform: translateY(-2px);
+}
+
+/* ============================================
+   HIERARCHICAL TABLE MODE (GROUPS)
+============================================ */
+
+/* Group Row in Table */
+tr.group-row {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-top: 1px solid rgba(34, 211, 238, 0.25);
+}
+
+tr.group-row:hover {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.25) 0%, rgba(16, 185, 129, 0.25) 100%);
+  box-shadow: 0 2px 12px rgba(34, 211, 238, 0.2);
+}
+
+.group-row-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.expand-icon {
+  font-size: 0.85rem;
+  transition: transform 0.3s ease;
+  color: #22d3ee;
+}
+
+.expand-icon.expanded {
+  transform: rotate(90deg);
+}
+
+.group-row-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  border-radius: 4px;
+  filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.4));
+}
+
+.group-row-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  background: rgba(34, 211, 238, 0.15);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: #a5f3fc;
+  font-weight: 500;
+}
+
+.group-row-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Container Row within Group */
+tr.container-row-grouped {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+tr.container-row-grouped td:first-child {
+  padding-left: 3rem;
+  position: relative;
+}
+
+tr.container-row-grouped td:first-child::before {
+  content: "└─";
+  position: absolute;
+  left: 2rem;
+  color: rgba(34, 211, 238, 0.3);
+  font-weight: normal;
+}
+
+tr.container-row-grouped:hover {
+  background: rgba(34, 211, 238, 0.08);
+}
+
+/* ============================================
+   CARDS VIEW MODE
+============================================ */
+
+#cards-view {
+  display: none;
+}
+
+.containers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 0.75rem;
+}
+
+/* Group Card - Glassmorphism */
+.group-card-glass {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.12) 0%, rgba(16, 185, 129, 0.12) 100%);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  border-radius: 16px;
+  padding: 1.5rem;
+  transition: all 0.4s ease;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.group-card-glass:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 40px rgba(34, 211, 238, 0.3);
+  border-color: rgba(34, 211, 238, 0.4);
+}
+
+.group-card-glass-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+}
+
+.group-card-glass-icon {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 8px;
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.4));
+}
+
+.group-card-glass-info {
+  flex: 1;
+}
+
+.group-card-glass-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  color: #e8f5ff;
+}
+
+.group-card-glass-badge {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  background: rgba(34, 211, 238, 0.15);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: #a5f3fc;
+  font-weight: 500;
+}
+
+.group-card-glass-header .group-autostart-toggle {
+  font-size: 0.75rem;
+  padding: 0.4rem 0.75rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.group-card-glass-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.container-list-glass {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.container-item-glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 0.85rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.3s ease;
+}
+
+.container-item-glass:hover {
+  background: rgba(34, 211, 238, 0.08);
+  border-color: rgba(34, 211, 238, 0.25);
+  transform: translateX(4px);
+  box-shadow: 0 2px 12px rgba(34, 211, 238, 0.15);
+}
+
+.container-item-glass-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 6px;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.4));
+}
+
+.container-item-glass-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.container-item-glass-name {
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  font-size: 0.95rem;
+  color: #e8f5ff;
+}
+
+.container-item-glass-meta {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.container-item-glass-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* Standalone Container Card - Glassmorphism */
+.standalone-card-glass {
+  background: rgba(13, 31, 44, 0.85);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 1.5rem;
+  transition: all 0.4s ease;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.standalone-card-glass:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 40px rgba(34, 211, 238, 0.2);
+  border-color: rgba(34, 211, 238, 0.25);
+}
+
+.standalone-card-glass-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.standalone-card-glass-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 8px;
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.3));
+}
+
+.standalone-card-glass-info {
+  flex: 1;
+}
+
+.standalone-card-glass-name {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  color: #e8f5ff;
+}
+
+.standalone-card-glass-image {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.standalone-card-glass-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(5px);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.standalone-detail-item {
+  font-size: 0.85rem;
+}
+
+.standalone-detail-label {
+  color: #94a3b8;
+  margin-right: 0.5rem;
+  font-weight: 500;
+}
+
+.standalone-card-glass-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* Responsive Cards */
+@media (max-width: 1200px) {
+  .containers-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .containers-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .view-mode-toggle {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .view-toggle-button {
+    width: 100%;
+  }
+}
+
+/* Hide groups column in hierarchical mode */
+.hierarchical-mode .groups-column {
+  display: none;
+}
+
+/* ============================================
+   Hierarchical Table Styles
+   ============================================ */
+
+/* Group Row */
+tr.group-row {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%);
+  backdrop-filter: blur(10px);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+tr.group-row:hover {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.25) 0%, rgba(16, 185, 129, 0.25) 100%);
+  transform: translateX(4px);
+}
+
+tr.group-row td {
+  border-top: 2px solid rgba(34, 211, 238, 0.4);
+  padding: 1rem;
+}
+
+.group-row-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.expand-icon {
+  font-size: 0.875rem;
+  transition: transform 0.2s ease;
+  color: #22d3ee;
+  display: inline-block;
+  width: 1rem;
+  text-align: center;
+}
+
+.expand-icon.expanded {
+  transform: rotate(90deg);
+}
+
+.group-row-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.group-row-name {
+  font-size: 1.05rem;
+  color: #e8f5ff;
+}
+
+.group-row-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  background: rgba(34, 211, 238, 0.2);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: #a5f3fc;
+  font-weight: 500;
+}
+
+.group-row-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.group-row-autostart {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.7rem;
+}
+
+/* Container Row inside Group */
+tr.container-row.grouped {
+  background: rgba(13, 31, 44, 0.6);
+}
+
+tr.container-row.grouped:hover {
+  background: rgba(13, 31, 44, 0.8);
+}
+
+tr.container-row.grouped.hidden {
+  display: none;
+}
+
+tr.container-row.grouped td:first-child {
+  padding-left: 3rem;
+  position: relative;
+}
+
+tr.container-row.grouped td:first-child::before {
+  content: "└";
+  position: absolute;
+  left: 1.5rem;
+  color: rgba(34, 211, 238, 0.4);
+  font-size: 1rem;
+}
+
+/* Standalone containers (no group) */
+tr.container-row.standalone {
+  background: rgba(13, 31, 44, 0.4);
+}
+
+tr.container-row.standalone:hover {
+  background: rgba(13, 31, 44, 0.7);
+}
