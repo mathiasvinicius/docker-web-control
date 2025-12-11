@@ -1653,39 +1653,54 @@ function renderCards() {
 
   dom.cardsContainer.innerHTML = '';
 
-  const allVisibleContainers = getVisibleContainers();
-  if (!allVisibleContainers.length) {
-    const empty = document.createElement('div');
-    empty.style.textAlign = 'center';
-    empty.style.padding = '2rem';
-    empty.style.opacity = '0.6';
-    empty.textContent = 'Nenhum container encontrado';
-    dom.cardsContainer.appendChild(empty);
-    return;
-  }
+  // Get all containers including grouped ones, with filters applied
+  const allContainersWithFilters = getVisibleContainers(true);
+
+  // Get standalone containers only (for later)
+  const standaloneContainersOnly = getVisibleContainers(false);
 
   // Organize containers by group
   const selectedGroups = invertGroups();
   const groupedIds = new Set();
+  const visibleContainerIds = new Set(allContainersWithFilters.map(c => c.id));
 
-  // Renderizar grupos como cards
+  let hasVisibleContent = false;
+
+  // Renderizar grupos como cards (apenas grupos com containers visíveis após filtros)
   Object.keys(state.groups).forEach(groupName => {
     const containerIds = state.groups[groupName] || [];
     if (containerIds.length === 0) return;
 
-    const groupCard = createGroupCard(groupName, containerIds);
+    // Filter group containers to only show visible ones (after filters)
+    const visibleGroupContainerIds = containerIds.filter(id => visibleContainerIds.has(id));
+
+    // Only render group if it has visible containers
+    if (visibleGroupContainerIds.length === 0) return;
+
+    const groupCard = createGroupCard(groupName, visibleGroupContainerIds);
     dom.cardsContainer.appendChild(groupCard);
+    hasVisibleContent = true;
 
     // Mark containers as grouped
     containerIds.forEach(id => groupedIds.add(id));
   });
 
   // Renderizar containers sem grupo
-  const standaloneContainers = allVisibleContainers.filter(c => !groupedIds.has(c.id));
-  standaloneContainers.forEach(container => {
+  standaloneContainersOnly.forEach(container => {
     const card = createStandaloneCard(container);
     dom.cardsContainer.appendChild(card);
+    hasVisibleContent = true;
   });
+
+  // Show empty message if nothing visible
+  if (!hasVisibleContent) {
+    const empty = document.createElement('div');
+    empty.style.textAlign = 'center';
+    empty.style.padding = '2rem';
+    empty.style.opacity = '0.6';
+    empty.textContent = 'Nenhum container encontrado';
+    dom.cardsContainer.appendChild(empty);
+  }
 }
 
 function createGroupCard(groupName, containerIds) {
