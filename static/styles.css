@@ -370,6 +370,9 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+  max-height: 280px;
+  overflow: auto;
+  padding-right: 0.25rem;
 }
 
 .system-top-item {
