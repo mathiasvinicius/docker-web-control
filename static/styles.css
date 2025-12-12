@@ -24,7 +24,7 @@ body {
 .bing-wallpaper {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -44,6 +44,11 @@ body {
 
 .bing-wallpaper.visible {
   opacity: 1;
+}
+
+.app-shell {
+  position: relative;
+  z-index: 1;
 }
 
 button {
