@@ -30,6 +30,17 @@
       "title_enable": "Clique para ativar fundo do Bing",
       "title_disable": "Clique para desativar fundo do Bing"
     },
+    "widgets": {
+      "clock": {
+        "title": "Hora"
+      },
+      "system": {
+        "title": "Status do Sistema",
+        "refresh_title": "Atualizar status do sistema",
+        "cpu": "CPU",
+        "ram": "RAM"
+      }
+    },
     "filters": {
       "search_placeholder": "Filtrar por nome, imagem ou grupo",
       "running_only": "Mostrar somente ativos"
@@ -156,6 +167,7 @@
       "rename_group": "Erro ao renomear grupo.",
       "action_failed": "Falha ao executar ação.",
       "group_action_failed": "Erro ao aplicar ação no grupo.",
+      "system_stats": "Falha ao carregar status do sistema.",
       "toggle_background": "Erro ao alternar fundo.",
       "bing_fetch": "Falha ao obter wallpaper do Bing.",
       "bing_invalid": "Wallpaper inválido.",
@@ -245,6 +257,17 @@
       "transparency": "Transparency",
       "title_enable": "Click to enable Bing background",
       "title_disable": "Click to disable Bing background"
+    },
+    "widgets": {
+      "clock": {
+        "title": "Time"
+      },
+      "system": {
+        "title": "System status",
+        "refresh_title": "Refresh system status",
+        "cpu": "CPU",
+        "ram": "RAM"
+      }
     },
     "filters": {
       "search_placeholder": "Filter by name, image, or group",
@@ -372,6 +395,7 @@
       "rename_group": "Error renaming group.",
       "action_failed": "Failed to run action.",
       "group_action_failed": "Failed to run group action.",
+      "system_stats": "Failed to load system stats.",
       "toggle_background": "Error toggling background.",
       "bing_fetch": "Failed to fetch Bing wallpaper.",
       "bing_invalid": "Invalid wallpaper.",

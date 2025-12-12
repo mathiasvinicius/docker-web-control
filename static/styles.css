@@ -222,6 +222,103 @@ textarea:focus {
   padding: 1.25rem 1.5rem 1.5rem;
 }
 
+.widgets-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.widget-panel {
+  padding: 0.85rem 1rem;
+}
+
+.widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.widget-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.widget-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: left;
+}
+
+.widget-clock-time {
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.widget-clock-date {
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.widget-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 0.35rem;
+}
+
+.metric-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.metric-label {
+  font-weight: 650;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.metric-value {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-bar {
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.metric-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.9), rgba(16, 185, 129, 0.9));
+  transition: width 0.35s ease;
+}
+
+.metric-fill.metric-fill-ram {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.9), rgba(34, 211, 238, 0.9));
+}
+
+.metric-sub {
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
 .panel {
   background: rgba(13, 31, 44, var(--containers-panel-opacity));
   border: 1px solid rgba(34, 211, 238, 0.12);

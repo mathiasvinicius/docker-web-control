@@ -51,8 +51,51 @@
 	            </select>
 	          </label>
 	        </div>
-	      </header>
+      </header>
       <main class="page-layout">
+        <section class="widgets-row" aria-label="Widgets">
+          <div class="panel widget-panel widget-clock" id="widget-clock">
+            <div class="widget-header">
+              <span class="widget-title" id="widget-clock-title">Hora</span>
+            </div>
+            <div class="widget-body">
+              <div class="widget-clock-time" id="clock-time">--:--:--</div>
+              <div class="widget-clock-date" id="clock-date">—</div>
+            </div>
+          </div>
+
+          <div class="panel widget-panel widget-system" id="widget-system">
+            <div class="widget-header">
+              <span class="widget-title" id="widget-system-title">Status do Sistema</span>
+              <button id="system-stats-refresh" class="icon-button" title="Atualizar status do sistema" type="button">
+                ↻
+              </button>
+            </div>
+            <div class="widget-body widget-metrics">
+              <div class="metric">
+                <div class="metric-label-row">
+                  <span class="metric-label" id="metric-cpu-label">CPU</span>
+                  <span class="metric-value" id="metric-cpu-value">—%</span>
+                </div>
+                <div class="metric-bar" role="progressbar" aria-label="CPU">
+                  <div class="metric-fill" id="metric-cpu-fill" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <div class="metric">
+                <div class="metric-label-row">
+                  <span class="metric-label" id="metric-ram-label">RAM</span>
+                  <span class="metric-value" id="metric-ram-value">—%</span>
+                </div>
+                <div class="metric-bar" role="progressbar" aria-label="RAM">
+                  <div class="metric-fill metric-fill-ram" id="metric-ram-fill" style="width: 0%"></div>
+                </div>
+                <div class="metric-sub" id="metric-ram-sub">—</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section class="panel containers-panel">
           <div class="panel-header">
             <h2 id="containers-title">Containers</h2>

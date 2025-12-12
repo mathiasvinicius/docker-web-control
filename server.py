@@ -74,6 +74,8 @@ MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB max file size
 BING_WALLPAPER_TTL_SECONDS = 6 * 60 * 60
 BING_WALLPAPER_CACHE_LOCK = threading.Lock()
 BING_WALLPAPER_CACHE: Dict[str, Dict[str, object]] = {}
+SYSTEM_STATS_LOCK = threading.Lock()
+SYSTEM_STATS_CPU_SAMPLE: Dict[str, float | int] = {}
 
 
 def _sanitize_bing_market(value: str) -> str:
@@ -141,6 +143,126 @@ def get_bing_wallpaper(market: str) -> Dict[str, str]:
     with BING_WALLPAPER_CACHE_LOCK:
         BING_WALLPAPER_CACHE[market] = {"fetched_at": now, "payload": payload}
     return payload
+
+
+def _read_proc_cpu_times() -> tuple[int, int] | None:
+    try:
+        line = Path("/proc/stat").read_text(encoding="utf-8").splitlines()[0]
+    except (FileNotFoundError, OSError, IndexError):
+        return None
+    parts = line.split()
+    if not parts or parts[0] != "cpu":
+        return None
+    try:
+        values = [int(v) for v in parts[1:]]
+    except ValueError:
+        return None
+    if len(values) < 4:
+        return None
+    idle = values[3] + (values[4] if len(values) > 4 else 0)
+    total = sum(values)
+    return total, idle
+
+
+def _read_proc_meminfo() -> dict[str, int] | None:
+    try:
+        lines = Path("/proc/meminfo").read_text(encoding="utf-8").splitlines()
+    except (FileNotFoundError, OSError):
+        return None
+
+    info: dict[str, int] = {}
+    for line in lines:
+        if ":" not in line:
+            continue
+        key, raw_value = line.split(":", 1)
+        key = key.strip()
+        raw_value = raw_value.strip()
+        if not key or not raw_value:
+            continue
+        parts = raw_value.split()
+        if not parts:
+            continue
+        try:
+            num = int(parts[0])
+        except ValueError:
+            continue
+        unit = parts[1].lower() if len(parts) > 1 else ""
+        if unit == "kb":
+            num *= 1024
+        info[key] = num
+
+    return info
+
+
+def get_system_stats() -> Dict[str, object]:
+    cpu_percent: float | None = None
+    load_avg: tuple[float, float, float] | None = None
+    uptime_seconds: float | None = None
+
+    try:
+        load_avg = os.getloadavg()
+    except (AttributeError, OSError):
+        load_avg = None
+
+    try:
+        uptime_raw = Path("/proc/uptime").read_text(encoding="utf-8").split()
+        if uptime_raw:
+            uptime_seconds = float(uptime_raw[0])
+    except (FileNotFoundError, OSError, ValueError):
+        uptime_seconds = None
+
+    with SYSTEM_STATS_LOCK:
+        first = _read_proc_cpu_times()
+        if first:
+            total1, idle1 = first
+            if SYSTEM_STATS_CPU_SAMPLE:
+                total0 = int(SYSTEM_STATS_CPU_SAMPLE.get("total", total1))
+                idle0 = int(SYSTEM_STATS_CPU_SAMPLE.get("idle", idle1))
+                delta_total = total1 - total0
+                delta_idle = idle1 - idle0
+                if delta_total > 0:
+                    cpu_percent = max(0.0, min(100.0, (1.0 - (delta_idle / delta_total)) * 100.0))
+            else:
+                # First call: sample quickly to provide an initial value.
+                time.sleep(0.12)
+                second = _read_proc_cpu_times()
+                if second:
+                    total2, idle2 = second
+                    delta_total = total2 - total1
+                    delta_idle = idle2 - idle1
+                    if delta_total > 0:
+                        cpu_percent = max(0.0, min(100.0, (1.0 - (delta_idle / delta_total)) * 100.0))
+                    total1, idle1 = total2, idle2
+
+            SYSTEM_STATS_CPU_SAMPLE["total"] = int(total1)
+            SYSTEM_STATS_CPU_SAMPLE["idle"] = int(idle1)
+            SYSTEM_STATS_CPU_SAMPLE["at"] = time.time()
+
+    mem = _read_proc_meminfo() or {}
+    mem_total = int(mem.get("MemTotal") or 0)
+    mem_available = int(mem.get("MemAvailable") or 0)
+    if mem_total and not mem_available:
+        mem_available = int(
+            (mem.get("MemFree") or 0) + (mem.get("Buffers") or 0) + (mem.get("Cached") or 0)
+        )
+    mem_used = max(0, mem_total - mem_available) if mem_total else 0
+    mem_percent = (mem_used / mem_total * 100.0) if mem_total else None
+
+    return {
+        "timestamp": time.time(),
+        "cpu": {
+            "percent": cpu_percent,
+            "cores": os.cpu_count() or 1,
+            "load_avg": list(load_avg) if load_avg else None,
+        },
+        "memory": {
+            "total_bytes": mem_total or None,
+            "available_bytes": mem_available or None,
+            "used_bytes": mem_used if mem_total else None,
+            "percent": mem_percent,
+        },
+        "uptime_seconds": uptime_seconds,
+    }
 
 
 def _read_file_bytes(path: Path) -> bytes:
@@ -726,6 +848,9 @@ class DockerControlHandler(BaseHTTPRequestHandler):
         if route == "/api/autostart":
             self._handle_get_autostart()
             return
+        if route == "/api/system-stats":
+            self._handle_get_system_stats()
+            return
         if route == "/api/bing-wallpaper":
             self._handle_get_bing_wallpaper(parsed)
             return
@@ -803,6 +928,9 @@ class DockerControlHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "Falha ao obter wallpaper do Bing.", "details": str(error)}, code=502)
             return
         self._send_json(payload)
+
+    def _handle_get_system_stats(self) -> None:
+        self._send_json(get_system_stats())
 
     def _handle_export_container(self, route: str) -> None:
         remainder = route[len("/api/containers/") :]

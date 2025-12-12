@@ -153,6 +153,18 @@ const dom = {
   runningOnly: document.getElementById("running-only"),
   refreshContainers: document.getElementById("refresh-containers"),
   containersTitle: document.getElementById("containers-title"),
+  widgetClockTitle: document.getElementById("widget-clock-title"),
+  clockTime: document.getElementById("clock-time"),
+  clockDate: document.getElementById("clock-date"),
+  widgetSystemTitle: document.getElementById("widget-system-title"),
+  systemStatsRefresh: document.getElementById("system-stats-refresh"),
+  metricCpuLabel: document.getElementById("metric-cpu-label"),
+  metricCpuValue: document.getElementById("metric-cpu-value"),
+  metricCpuFill: document.getElementById("metric-cpu-fill"),
+  metricRamLabel: document.getElementById("metric-ram-label"),
+  metricRamValue: document.getElementById("metric-ram-value"),
+  metricRamFill: document.getElementById("metric-ram-fill"),
+  metricRamSub: document.getElementById("metric-ram-sub"),
   toast: document.getElementById("toast"),
   langSelect: document.getElementById("lang-select"),
   navLanguageLabel: document.getElementById("nav-language-label"),
@@ -176,6 +188,8 @@ const dom = {
 };
 
 let toastTimer;
+let clockTimer;
+let systemStatsTimer;
 const dragState = { draggingCard: null };
 const defaultTranslations = {
   "pt-BR": {},
@@ -192,6 +206,8 @@ async function init() {
   applyBingWallpaperFromCache();
   updateOrganizeModeUI();
   attachEvents();
+  startClock();
+  startSystemStatsPolling();
   await loadAll();
 
   if (state.bingBackgroundEnabled) {
@@ -220,6 +236,8 @@ function attachEvents() {
       applyStaticTranslations();
       updateOrganizeModeUI();
       updateBingBackgroundUI();
+      updateClock();
+      refreshSystemStats({ silent: true }).catch(() => null);
       render();
       if (state.bingBackgroundEnabled) {
         refreshBingWallpaper({ silent: true }).catch(() => null);
@@ -229,6 +247,10 @@ function attachEvents() {
 
   if (dom.refreshContainers) {
     dom.refreshContainers.addEventListener("click", () => loadAll());
+  }
+
+  if (dom.systemStatsRefresh) {
+    dom.systemStatsRefresh.addEventListener("click", () => refreshSystemStats());
   }
 
   if (dom.newFromDockerfile) {
@@ -386,9 +408,110 @@ function applyBingWallpaperFromCache() {
   applyBingWallpaper(cached);
 }
 
+function getLocale() {
+  return state.currentLang === "pt-BR" ? "pt-BR" : "en-US";
+}
+
 function getBingMarket() {
-  if (state.currentLang === "pt-BR") return "pt-BR";
-  return "en-US";
+  return getLocale();
+}
+
+function updateClock() {
+  if (!dom.clockTime && !dom.clockDate) return;
+  const now = new Date();
+  const locale = getLocale();
+  if (dom.clockTime) {
+    dom.clockTime.textContent = now.toLocaleTimeString(locale, {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  }
+  if (dom.clockDate) {
+    dom.clockDate.textContent = now.toLocaleDateString(locale, {
+      weekday: "long",
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  }
+}
+
+function startClock() {
+  if (clockTimer) clearInterval(clockTimer);
+  updateClock();
+  clockTimer = setInterval(updateClock, 1000);
+}
+
+function formatBytes(bytes) {
+  const value = Number(bytes);
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
+  let scaled = value;
+  let unitIndex = 0;
+  while (scaled >= 1024 && unitIndex < units.length - 1) {
+    scaled /= 1024;
+    unitIndex += 1;
+  }
+  const locale = getLocale();
+  const formatter = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: unitIndex === 0 ? 0 : 1,
+  });
+  return `${formatter.format(scaled)} ${units[unitIndex]}`;
+}
+
+function updateSystemStatsUI(stats) {
+  const cpuPercent = Number(stats?.cpu?.percent);
+  const memPercent = Number(stats?.memory?.percent);
+  const memUsed = stats?.memory?.used_bytes;
+  const memTotal = stats?.memory?.total_bytes;
+
+  if (dom.metricCpuValue) {
+    dom.metricCpuValue.textContent = Number.isFinite(cpuPercent) ? `${Math.round(cpuPercent)}%` : "—%";
+  }
+  if (dom.metricCpuFill) {
+    const pct = Number.isFinite(cpuPercent) ? clamp(cpuPercent, 0, 100) : 0;
+    dom.metricCpuFill.style.width = `${pct}%`;
+  }
+
+  if (dom.metricRamValue) {
+    dom.metricRamValue.textContent = Number.isFinite(memPercent) ? `${Math.round(memPercent)}%` : "—%";
+  }
+  if (dom.metricRamFill) {
+    const pct = Number.isFinite(memPercent) ? clamp(memPercent, 0, 100) : 0;
+    dom.metricRamFill.style.width = `${pct}%`;
+  }
+  if (dom.metricRamSub) {
+    dom.metricRamSub.textContent =
+      Number.isFinite(Number(memUsed)) && Number.isFinite(Number(memTotal)) && Number(memTotal) > 0
+        ? `${formatBytes(memUsed)} / ${formatBytes(memTotal)}`
+        : "—";
+  }
+}
+
+async function fetchSystemStats() {
+  const response = await fetch("/api/system-stats");
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.error || t("errors.system_stats", "Failed to load system stats."));
+  }
+  return data;
+}
+
+async function refreshSystemStats({ silent } = {}) {
+  try {
+    const stats = await fetchSystemStats();
+    updateSystemStatsUI(stats);
+  } catch (error) {
+    if (!silent) showToast(error.message || t("errors.system_stats", "Failed to load system stats."), true);
+  }
+}
+
+function startSystemStatsPolling() {
+  if (!dom.metricCpuValue && !dom.metricRamValue) return;
+  if (systemStatsTimer) clearInterval(systemStatsTimer);
+  refreshSystemStats({ silent: true }).catch(() => null);
+  systemStatsTimer = setInterval(() => refreshSystemStats({ silent: true }).catch(() => null), 4000);
 }
 
 async function fetchBingWallpaper() {
@@ -607,6 +730,11 @@ function applyStaticTranslations() {
   if (dom.appSubtitle) dom.appSubtitle.textContent = t("app.subtitle");
   if (dom.navLanguageLabel) dom.navLanguageLabel.textContent = t("nav.language");
   if (dom.containersTitle) dom.containersTitle.textContent = t("nav.containers", "Containers");
+  if (dom.widgetClockTitle) dom.widgetClockTitle.textContent = t("widgets.clock.title", "Clock");
+  if (dom.widgetSystemTitle) dom.widgetSystemTitle.textContent = t("widgets.system.title", "System status");
+  if (dom.metricCpuLabel) dom.metricCpuLabel.textContent = t("widgets.system.cpu", "CPU");
+  if (dom.metricRamLabel) dom.metricRamLabel.textContent = t("widgets.system.ram", "RAM");
+  if (dom.systemStatsRefresh) dom.systemStatsRefresh.title = t("widgets.system.refresh_title", "Refresh system status");
   if (dom.refreshContainers) dom.refreshContainers.title = t("panel.refresh_containers", "Refresh containers");
   if (dom.newGroup) dom.newGroup.textContent = t("quick.new_group", "➕ New group");
   if (dom.newFromDockerfile) dom.newFromDockerfile.textContent = t("quick.new_dockerfile", "➕ New via Dockerfile");
