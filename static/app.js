@@ -66,6 +66,7 @@ const dom = {
   toggleCards: document.getElementById("toggle-cards"),
   cardsContainer: document.getElementById("cards-container"),
   cardsView: document.getElementById("cards-view"),
+  newGroup: document.getElementById("new-group"),
   newFromDockerfile: document.getElementById("new-from-dockerfile"),
   newFromCommand: document.getElementById("new-from-command"),
 };
@@ -236,6 +237,9 @@ function attachEvents() {
   }
   if (dom.newFromCommand) {
     dom.newFromCommand.addEventListener("click", openNewContainerFromCommand);
+  }
+  if (dom.newGroup) {
+    dom.newGroup.addEventListener("click", openNewGroup);
   }
 }
 
@@ -1684,46 +1688,53 @@ function renderCards() {
 
   dom.cardsContainer.innerHTML = '';
 
-  // Get all containers including grouped ones, with filters applied
-  const allContainersWithFilters = getVisibleContainers(true);
-  const selectedGroups = invertGroups();
-  const orderedGroups = computeOrderedGroups(allContainersWithFilters, selectedGroups);
+  const visibleContainers = getVisibleContainers(true);
+  const visibleContainerIds = new Set(visibleContainers.map((c) => c.id));
 
-  // Get standalone containers only (for later)
-  const standaloneContainersOnly = getVisibleContainers(false);
+  const hasTerm = Boolean(state.filter);
+  const term = state.filter;
 
-  // Organize containers by group
-  const groupedIds = new Set();
-  const visibleContainerIds = new Set(allContainersWithFilters.map(c => c.id));
+  // Renderizar todos os grupos (inclusive vazios), para que o modo Cards substitua a tela legada.
+  const groupNames = Object.keys(state.groups || {}).sort((a, b) =>
+    groupLabel(a).localeCompare(groupLabel(b), undefined, { sensitivity: "base" })
+  );
 
-  let hasVisibleContent = false;
+  let hasAnyCard = false;
 
-  // Renderizar grupos como cards (apenas grupos com containers visíveis após filtros)
-  orderedGroups.forEach(groupName => {
-    // Containers visíveis deste grupo na mesma ordem da tabela (já ordenados em allContainersWithFilters)
-    const visibleGroupContainerIds = allContainersWithFilters
-      .filter(c => (selectedGroups.get(c.id) || []).includes(groupName))
-      .map(c => c.id);
+  groupNames.forEach((groupName) => {
+    const allGroupContainerIds = getGroupContainerIds(groupName);
+    const visibleGroupContainerIds = allGroupContainerIds.filter((id) => visibleContainerIds.has(id));
 
-    if (visibleGroupContainerIds.length === 0) return;
+    const label = groupLabel(groupName);
+    const matchesGroupName =
+      hasTerm &&
+      [groupName, label]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(term));
 
-    const groupCard = createGroupCard(groupName, visibleGroupContainerIds);
+    const showGroup = hasTerm
+      ? matchesGroupName || visibleGroupContainerIds.length > 0
+      : state.runningOnly
+      ? visibleGroupContainerIds.length > 0
+      : true;
+
+    if (!showGroup) return;
+
+    const groupCard = createGroupCard(groupName, visibleGroupContainerIds, allGroupContainerIds);
     dom.cardsContainer.appendChild(groupCard);
-    hasVisibleContent = true;
-
-    // Mark containers as grouped
-    visibleGroupContainerIds.forEach(id => groupedIds.add(id));
+    hasAnyCard = true;
   });
 
-  // Renderizar containers sem grupo
-  standaloneContainersOnly.forEach(container => {
+  // Containers sem grupo
+  const selectedGroups = invertGroups();
+  const standaloneContainersOnly = getVisibleContainers(false);
+  standaloneContainersOnly.forEach((container) => {
     const card = createStandaloneCard(container, selectedGroups);
     dom.cardsContainer.appendChild(card);
-    hasVisibleContent = true;
+    hasAnyCard = true;
   });
 
-  // Show empty message if nothing visible
-  if (!hasVisibleContent) {
+  if (!hasAnyCard) {
     const empty = document.createElement('div');
     empty.style.textAlign = 'center';
     empty.style.padding = '2rem';
@@ -1762,7 +1773,119 @@ function computeGroupStatus(containerIds) {
   return { running, total, label: `${running}/${total} rodando`, className: "status-mixed" };
 }
 
-function createGroupCard(groupName, containerIds) {
+function openAddContainersToGroup(groupName) {
+  const existingIds = new Set(getGroupContainerIds(groupName));
+  const candidates = state.containers
+    .filter((c) => c && c.id && !existingIds.has(c.id))
+    .sort((a, b) =>
+      containerDisplay(a).main.localeCompare(containerDisplay(b).main, undefined, { sensitivity: "base" })
+    );
+
+  if (!candidates.length) {
+    showToast("Nenhum container disponível para adicionar.", true);
+    return;
+  }
+
+  const body = document.createElement("div");
+  body.style.display = "flex";
+  body.style.flexDirection = "column";
+  body.style.gap = "0.65rem";
+
+  const search = document.createElement("input");
+  search.type = "search";
+  search.placeholder = "Buscar containers…";
+  body.appendChild(search);
+
+  const list = document.createElement("div");
+  list.style.display = "flex";
+  list.style.flexDirection = "column";
+  list.style.gap = "0.35rem";
+  list.style.maxHeight = "50vh";
+  list.style.overflow = "auto";
+  body.appendChild(list);
+
+  const checkboxById = new Map();
+
+  const renderList = () => {
+    list.innerHTML = "";
+    const term = (search.value || "").trim().toLowerCase();
+    const filtered = term
+      ? candidates.filter((c) => {
+          const display = containerDisplay(c);
+          const haystack = [display.main, display.original, c.name, c.image, c.project]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(term);
+        })
+      : candidates;
+
+    if (!filtered.length) {
+      const empty = document.createElement("div");
+      empty.style.opacity = "0.75";
+      empty.textContent = "Nenhum container encontrado.";
+      list.appendChild(empty);
+      return;
+    }
+
+    filtered.forEach((c) => {
+      const row = document.createElement("label");
+      row.style.display = "flex";
+      row.style.alignItems = "center";
+      row.style.gap = "0.5rem";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkboxById.set(c.id, checkbox);
+
+      const text = document.createElement("span");
+      const display = containerDisplay(c);
+      const stateLabel = (c.state || "").toLowerCase() === "running" ? "running" : "stopped";
+      text.textContent = `${display.main} • ${stateLabel} • ${c.image || "—"}`;
+
+      row.appendChild(checkbox);
+      row.appendChild(text);
+      list.appendChild(row);
+    });
+  };
+
+  search.addEventListener("input", renderList);
+  renderList();
+
+  openModal({
+    title: `Adicionar containers em "${groupLabel(groupName)}"`,
+    body,
+    confirmText: "Adicionar",
+    onConfirm: async () => {
+      const chosen = [];
+      candidates.forEach((c) => {
+        const checkbox = checkboxById.get(c.id);
+        if (checkbox?.checked) {
+          chosen.push(c.id);
+        }
+      });
+
+      if (!chosen.length) {
+        showToast("Selecione ao menos um container.", true);
+        return;
+      }
+
+      if (!state.groups[groupName]) {
+        state.groups[groupName] = [];
+      }
+      const next = new Set(state.groups[groupName]);
+      chosen.forEach((id) => next.add(id));
+      state.groups[groupName] = Array.from(next);
+
+      await persistGroups("Containers adicionados ao grupo.");
+      render();
+    },
+  });
+
+  setTimeout(() => search.focus(), 0);
+}
+
+function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
   const card = document.createElement('div');
   card.className = 'group-card-glass';
   card.classList.remove('expanded');
@@ -1770,10 +1893,12 @@ function createGroupCard(groupName, containerIds) {
   const aliasMeta = state.groupAliases?.[groupName];
   const displayName = groupLabel(groupName);
 
+  const groupContainerIds = Array.isArray(allContainerIds) ? allContainerIds : [];
+
   // Ícone do grupo: preferir ícone definido no alias, senão primeiro container com ícone
   const groupIconAlias = aliasMeta && typeof aliasMeta === "object" ? aliasMeta.icon : "";
   const containerMap = buildContainerMap();
-  const groupIconContainer = containerIds
+  const groupIconContainer = groupContainerIds
     .map((id) => containerMap.get(id))
     .find((c) => c && c.icon)?.icon;
   const groupIcon = groupIconAlias || groupIconContainer;
@@ -1818,10 +1943,10 @@ function createGroupCard(groupName, containerIds) {
 
   const badge = document.createElement('span');
   badge.className = 'group-card-glass-badge';
-  badge.textContent = `${containerIds.length} container${containerIds.length > 1 ? 's' : ''}`;
+  badge.textContent = `${groupContainerIds.length} container${groupContainerIds.length > 1 ? 's' : ''}`;
   statsRow.appendChild(badge);
 
-  const groupStatus = computeGroupStatus(containerIds);
+  const groupStatus = computeGroupStatus(groupContainerIds);
   const statusPill = document.createElement('span');
   statusPill.className = `status-pill ${groupStatus.className}`;
   statusPill.textContent = groupStatus.label;
@@ -1840,7 +1965,7 @@ function createGroupCard(groupName, containerIds) {
     const button = event.target;
     const previousGroups = [...state.autostart.groups];
     const previousPolicies = {};
-    containerIds.forEach((id) => {
+    groupContainerIds.forEach((id) => {
       const c = containerMap.get(id);
       previousPolicies[id] = (c && c.restart_policy) || 'no';
     });
@@ -1859,10 +1984,10 @@ function createGroupCard(groupName, containerIds) {
     try {
       await saveAutostart();
       // Ajustar restart policy dos containers do grupo para refletir no boot
-      if (containerIds.length) {
+      if (groupContainerIds.length) {
         const newPolicy = newEnabled ? 'unless-stopped' : 'no';
-        await Promise.all(containerIds.map((id) => setRestartPolicy(id, newPolicy)));
-        containerIds.forEach((id) => {
+        await Promise.all(groupContainerIds.map((id) => setRestartPolicy(id, newPolicy)));
+        groupContainerIds.forEach((id) => {
           const c = containerMap.get(id);
           if (c) c.restart_policy = newPolicy;
         });
@@ -1872,14 +1997,14 @@ function createGroupCard(groupName, containerIds) {
       showToast(error.message || 'Erro ao salvar', true);
       // Reverter grupo e restart policy (best effort)
       state.autostart.groups = previousGroups;
-      if (containerIds.length) {
+      if (groupContainerIds.length) {
         const revertPolicy = currentEnabled ? 'unless-stopped' : 'no';
         await Promise.all(
-          containerIds.map((id) =>
+          groupContainerIds.map((id) =>
             setRestartPolicy(id, previousPolicies[id] || revertPolicy).catch(() => null)
           )
         );
-        containerIds.forEach((id) => {
+        groupContainerIds.forEach((id) => {
           const c = containerMap.get(id);
           if (c) c.restart_policy = previousPolicies[id] || c.restart_policy;
         });
@@ -1928,6 +2053,12 @@ function createGroupCard(groupName, containerIds) {
   const actions = document.createElement('div');
   actions.className = 'group-card-glass-actions';
 
+  const addBtn = createButton("➕ Adicionar container", "ghost small", (e) => {
+    e.stopPropagation();
+    openAddContainersToGroup(groupName);
+  });
+  actions.appendChild(addBtn);
+
   getGroupActions(groupName).forEach((action) => {
     actions.appendChild(
       createButton(
@@ -1948,13 +2079,22 @@ function createGroupCard(groupName, containerIds) {
   const list = document.createElement('div');
   list.className = 'container-list-glass';
 
-  containerIds.forEach(cid => {
+  visibleContainerIds.forEach(cid => {
     const container = containerMap.get(cid);
     if (!container) return;
 
-    const item = createContainerItem(container);
+    const item = createContainerItem(container, groupName);
     list.appendChild(item);
   });
+
+  if (!list.childElementCount) {
+    const empty = document.createElement("div");
+    empty.style.opacity = "0.75";
+    empty.textContent = groupContainerIds.length
+      ? "Nenhum container visível com os filtros atuais."
+      : "Nenhum container neste grupo.";
+    list.appendChild(empty);
+  }
 
   collapsible.appendChild(list);
   card.appendChild(collapsible);
@@ -1978,7 +2118,7 @@ function createGroupCard(groupName, containerIds) {
   return card;
 }
 
-function createContainerItem(container) {
+function createContainerItem(container, groupName) {
   const item = document.createElement('div');
   item.className = 'container-item-glass';
 
@@ -2028,6 +2168,15 @@ function createContainerItem(container) {
   );
   editBtn.title = "Editar Dockerfile";
   actions.appendChild(editBtn);
+
+  if (groupName) {
+    const removeBtn = createButton("⨯", "ghost small", (e) => {
+      e.stopPropagation();
+      removeFromGroup(groupName, container.id);
+    });
+    removeBtn.title = `Remover de "${groupLabel(groupName)}"`;
+    actions.appendChild(removeBtn);
+  }
 
   item.appendChild(actions);
   return item;
@@ -2236,9 +2385,10 @@ function setView(view) {
 }
 
 function updateViewVisibility() {
-  // Mostrar sempre todas as seções (containers e grupos) já que não há navegação lateral
+  // UI atual é focada em cards na página principal; ocultar painel legado de "Grupos".
   dom.viewPanels.forEach((panel) => {
-    panel.classList.remove("hidden");
+    const isLegacyGroupsPanel = panel.dataset.view === "groups";
+    panel.classList.toggle("hidden", isLegacyGroupsPanel);
   });
 }
 
@@ -3096,6 +3246,43 @@ async function openDockerfileEditor(containerId, displayName) {
   } catch (error) {
     showToast(error.message || "Erro ao editar Dockerfile", true);
   }
+}
+
+function openNewGroup() {
+  const body = document.createElement("div");
+  body.style.display = "flex";
+  body.style.flexDirection = "column";
+  body.style.gap = "0.65rem";
+
+  const nameInput = document.createElement("input");
+  nameInput.placeholder = "Nome do grupo";
+  body.appendChild(nameInput);
+
+  openModal({
+    title: "Criar grupo",
+    body,
+    confirmText: "Criar",
+    onConfirm: async () => {
+      const name = nameInput.value.trim();
+      if (!name) {
+        showToast("O nome do grupo é obrigatório.", true);
+        return;
+      }
+      if (state.groups[name]) {
+        showToast("Já existe um grupo com esse nome.", true);
+        return;
+      }
+      state.groups[name] = [];
+      await persistGroups("Grupo criado.");
+      // Garantir que o novo grupo apareça sem depender de filtros antigos.
+      state.filter = "";
+      if (dom.filterInput) dom.filterInput.value = "";
+      render();
+    },
+  });
+
+  // Focus after modal mounted.
+  setTimeout(() => nameInput.focus(), 0);
 }
 
 function openNewContainerFromDockerfile() {

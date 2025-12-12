@@ -1392,9 +1392,9 @@ tr.container-row-grouped:hover {
 
 .group-card-stats-row {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
 }
 
 .group-card-glass-header .group-autostart-toggle {
