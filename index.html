@@ -72,7 +72,7 @@
               </button>
             </div>
             <div class="widget-body widget-metrics">
-              <div class="metric">
+              <div class="metric metric-clickable" id="metric-cpu" role="button" tabindex="0" aria-expanded="false">
                 <div class="metric-label-row">
                   <span class="metric-label" id="metric-cpu-label">CPU</span>
                   <span class="metric-value" id="metric-cpu-value">—%</span>
@@ -82,7 +82,7 @@
                 </div>
               </div>
 
-              <div class="metric">
+              <div class="metric metric-clickable" id="metric-ram" role="button" tabindex="0" aria-expanded="false">
                 <div class="metric-label-row">
                   <span class="metric-label" id="metric-ram-label">RAM</span>
                   <span class="metric-value" id="metric-ram-value">—%</span>
@@ -92,6 +92,17 @@
                 </div>
                 <div class="metric-sub" id="metric-ram-sub">—</div>
               </div>
+            </div>
+
+            <div id="system-top-panel" class="system-top-panel" hidden>
+              <div class="system-top-header">
+                <span class="system-top-title" id="system-top-title">Top CPU</span>
+                <label class="inline system-top-toggle">
+                  <input type="checkbox" id="system-top-only-containers" checked />
+                  <span id="system-top-only-containers-label">Apenas containers</span>
+                </label>
+              </div>
+              <div class="system-top-list" id="system-top-list"></div>
             </div>
           </div>
         </section>

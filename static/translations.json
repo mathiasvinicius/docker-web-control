@@ -38,7 +38,13 @@
         "title": "Status do Sistema",
         "refresh_title": "Atualizar status do sistema",
         "cpu": "CPU",
-        "ram": "RAM"
+        "ram": "RAM",
+        "top_cpu": "Top CPU",
+        "top_ram": "Top RAM",
+        "only_containers": "Apenas containers",
+        "top_empty": "Sem dados.",
+        "item_unknown": "desconhecido",
+        "process_unknown": "processo"
       }
     },
     "filters": {
@@ -168,6 +174,7 @@
       "action_failed": "Falha ao executar ação.",
       "group_action_failed": "Erro ao aplicar ação no grupo.",
       "system_stats": "Falha ao carregar status do sistema.",
+      "system_top": "Falha ao carregar consumo (top 10).",
       "toggle_background": "Erro ao alternar fundo.",
       "bing_fetch": "Falha ao obter wallpaper do Bing.",
       "bing_invalid": "Wallpaper inválido.",
@@ -266,7 +273,13 @@
         "title": "System status",
         "refresh_title": "Refresh system status",
         "cpu": "CPU",
-        "ram": "RAM"
+        "ram": "RAM",
+        "top_cpu": "Top CPU",
+        "top_ram": "Top RAM",
+        "only_containers": "Only containers",
+        "top_empty": "No data.",
+        "item_unknown": "unknown",
+        "process_unknown": "process"
       }
     },
     "filters": {
@@ -396,6 +409,7 @@
       "action_failed": "Failed to run action.",
       "group_action_failed": "Failed to run group action.",
       "system_stats": "Failed to load system stats.",
+      "system_top": "Failed to load usage details (top 10).",
       "toggle_background": "Error toggling background.",
       "bing_fetch": "Failed to fetch Bing wallpaper.",
       "bing_invalid": "Invalid wallpaper.",

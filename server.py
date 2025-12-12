@@ -265,6 +265,187 @@ def get_system_stats() -> Dict[str, object]:
     }
 
 
+def _parse_percent(value: str) -> float | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    if raw.endswith("%"):
+        raw = raw[:-1].strip()
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+def _parse_docker_size(value: str) -> int | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+
+    match = re.fullmatch(r"([0-9]*\.?[0-9]+)\s*([a-zA-Z]+)?", raw)
+    if not match:
+        return None
+    num_raw = match.group(1)
+    unit = (match.group(2) or "B").strip()
+    try:
+        num = float(num_raw)
+    except ValueError:
+        return None
+
+    unit_norm = unit.lower()
+    factors = {
+        "b": 1,
+        "kb": 1000,
+        "mb": 1000**2,
+        "gb": 1000**3,
+        "tb": 1000**4,
+        "kib": 1024,
+        "mib": 1024**2,
+        "gib": 1024**3,
+        "tib": 1024**4,
+    }
+    factor = factors.get(unit_norm)
+    if factor is None:
+        return None
+    return int(num * factor)
+
+
+def _parse_docker_mem_usage(value: str) -> tuple[int | None, int | None]:
+    raw = (value or "").strip()
+    if not raw or "/" not in raw:
+        return None, None
+    left, right = raw.split("/", 1)
+    used = _parse_docker_size(left.strip())
+    limit = _parse_docker_size(right.strip())
+    return used, limit
+
+
+def _fetch_top_containers(sort_key: str, limit: int) -> list[dict[str, object]]:
+    output = run_docker_command(
+        [
+            "stats",
+            "--no-stream",
+            "--format",
+            "{{.ID}}\t{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}",
+        ]
+    )
+    items: list[dict[str, object]] = []
+    for line in output.splitlines():
+        parts = line.rstrip("\n").split("\t")
+        if len(parts) < 5:
+            continue
+        container_id = parts[0].strip()
+        name = parts[1].strip()
+        cpu_percent = _parse_percent(parts[2])
+        mem_used, mem_limit = _parse_docker_mem_usage(parts[3])
+        mem_percent = _parse_percent(parts[4])
+        if mem_percent is None and mem_used is not None and mem_limit:
+            mem_percent = (mem_used / mem_limit) * 100.0
+
+        items.append(
+            {
+                "type": "container",
+                "id": container_id,
+                "name": name or container_id,
+                "cpu_percent": cpu_percent,
+                "mem_used_bytes": mem_used,
+                "mem_limit_bytes": mem_limit,
+                "mem_percent": mem_percent,
+            }
+        )
+
+    if sort_key == "mem":
+        items.sort(key=lambda x: float(x.get("mem_used_bytes") or 0), reverse=True)
+    else:
+        items.sort(key=lambda x: float(x.get("cpu_percent") or 0), reverse=True)
+    return items[:limit]
+
+
+def _fetch_top_processes(sort_key: str, limit: int) -> list[dict[str, object]]:
+    sort_arg = "--sort=-pcpu" if sort_key == "cpu" else "--sort=-rss"
+    completed = subprocess.run(
+        ["ps", "-eo", "pid,comm,pcpu,pmem,rss", "--no-headers", sort_arg],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=3,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(completed.stderr.strip() or "ps failed")
+
+    items: list[dict[str, object]] = []
+    for raw_line in completed.stdout.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        parts = line.split(None, 4)
+        if len(parts) < 5:
+            continue
+        try:
+            pid = int(parts[0])
+        except ValueError:
+            continue
+        name = parts[1].strip()
+        try:
+            cpu_percent = float(parts[2])
+        except ValueError:
+            cpu_percent = None
+        try:
+            mem_percent = float(parts[3])
+        except ValueError:
+            mem_percent = None
+        try:
+            rss_kb = int(parts[4])
+        except ValueError:
+            rss_kb = 0
+        items.append(
+            {
+                "type": "process",
+                "pid": pid,
+                "name": name or str(pid),
+                "cpu_percent": cpu_percent,
+                "mem_percent": mem_percent,
+                "mem_rss_bytes": rss_kb * 1024,
+            }
+        )
+
+    if sort_key == "mem":
+        items.sort(key=lambda x: int(x.get("mem_rss_bytes") or 0), reverse=True)
+    else:
+        items.sort(key=lambda x: float(x.get("cpu_percent") or 0), reverse=True)
+    return items[:limit]
+
+
+def get_system_top(scope: str, sort_key: str, limit: int = 10) -> Dict[str, object]:
+    scope_norm = (scope or "").strip().lower()
+    if scope_norm not in ("containers", "processes"):
+        scope_norm = "containers"
+
+    sort_norm = (sort_key or "").strip().lower()
+    if sort_norm in ("mem", "memory", "ram"):
+        sort_norm = "mem"
+    else:
+        sort_norm = "cpu"
+
+    try:
+        limit_int = int(limit)
+    except (TypeError, ValueError):
+        limit_int = 10
+    limit_int = max(1, min(10, limit_int))
+
+    if scope_norm == "processes":
+        items = _fetch_top_processes(sort_norm, limit_int)
+    else:
+        items = _fetch_top_containers(sort_norm, limit_int)
+
+    return {
+        "scope": scope_norm,
+        "sort": sort_norm,
+        "limit": limit_int,
+        "items": items,
+    }
+
+
 def _read_file_bytes(path: Path) -> bytes:
     with path.open("rb") as file_handle:
         return file_handle.read()
@@ -851,6 +1032,9 @@ class DockerControlHandler(BaseHTTPRequestHandler):
         if route == "/api/system-stats":
             self._handle_get_system_stats()
             return
+        if route == "/api/system-top":
+            self._handle_get_system_top(parsed)
+            return
         if route == "/api/bing-wallpaper":
             self._handle_get_bing_wallpaper(parsed)
             return
@@ -931,6 +1115,25 @@ class DockerControlHandler(BaseHTTPRequestHandler):
 
     def _handle_get_system_stats(self) -> None:
         self._send_json(get_system_stats())
+
+    def _handle_get_system_top(self, parsed) -> None:
+        qs = parse_qs(parsed.query)
+        scope = qs.get("scope", ["containers"])[0]
+        sort_key = qs.get("sort", ["cpu"])[0]
+        limit_raw = qs.get("limit", ["10"])[0]
+        try:
+            limit = int(limit_raw)
+        except ValueError:
+            limit = 10
+        try:
+            payload = get_system_top(scope, sort_key, limit=limit)
+        except DockerCommandError as error:
+            self._send_json({"error": str(error), "details": error.stderr}, code=500)
+            return
+        except Exception as error:
+            self._send_json({"error": "Falha ao obter consumo do sistema.", "details": str(error)}, code=500)
+            return
+        self._send_json(payload)
 
     def _handle_export_container(self, route: str) -> None:
         remainder = route[len("/api/containers/") :]

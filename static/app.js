@@ -13,12 +13,16 @@ const state = {
   bingBackgroundPanelOpen: false,
   autostart: { groups: [], containers: [] },
   pinnedEmptyGroups: [],
+  systemTopOpen: false,
+  systemTopSort: "cpu",
+  systemTopOnlyContainers: true,
 };
 
 const PINNED_EMPTY_GROUPS_KEY = "dockerControlPinnedEmptyGroups";
 const BING_BG_ENABLED_KEY = "dockerControlBingBackgroundEnabled";
 const BING_BG_CACHE_KEY = "dockerControlBingWallpaperCache";
 const BING_BG_TRANSPARENCY_KEY = "dockerControlBingBackgroundTransparency";
+const SYSTEM_TOP_ONLY_CONTAINERS_KEY = "dockerControlSystemTopOnlyContainers";
 
 function loadPinnedEmptyGroups() {
   try {
@@ -108,6 +112,24 @@ function persistBingBackgroundTransparency() {
   }
 }
 
+function loadSystemTopOnlyContainers() {
+  try {
+    const raw = localStorage.getItem(SYSTEM_TOP_ONLY_CONTAINERS_KEY);
+    if (raw === null) return true;
+    return raw === "1";
+  } catch {
+    return true;
+  }
+}
+
+function persistSystemTopOnlyContainers() {
+  try {
+    localStorage.setItem(SYSTEM_TOP_ONLY_CONTAINERS_KEY, state.systemTopOnlyContainers ? "1" : "0");
+  } catch {
+    // ignore
+  }
+}
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -158,13 +180,20 @@ const dom = {
   clockDate: document.getElementById("clock-date"),
   widgetSystemTitle: document.getElementById("widget-system-title"),
   systemStatsRefresh: document.getElementById("system-stats-refresh"),
+  metricCpu: document.getElementById("metric-cpu"),
   metricCpuLabel: document.getElementById("metric-cpu-label"),
   metricCpuValue: document.getElementById("metric-cpu-value"),
   metricCpuFill: document.getElementById("metric-cpu-fill"),
+  metricRam: document.getElementById("metric-ram"),
   metricRamLabel: document.getElementById("metric-ram-label"),
   metricRamValue: document.getElementById("metric-ram-value"),
   metricRamFill: document.getElementById("metric-ram-fill"),
   metricRamSub: document.getElementById("metric-ram-sub"),
+  systemTopPanel: document.getElementById("system-top-panel"),
+  systemTopTitle: document.getElementById("system-top-title"),
+  systemTopOnlyContainers: document.getElementById("system-top-only-containers"),
+  systemTopOnlyContainersLabel: document.getElementById("system-top-only-containers-label"),
+  systemTopList: document.getElementById("system-top-list"),
   toast: document.getElementById("toast"),
   langSelect: document.getElementById("lang-select"),
   navLanguageLabel: document.getElementById("nav-language-label"),
@@ -190,6 +219,7 @@ const dom = {
 let toastTimer;
 let clockTimer;
 let systemStatsTimer;
+let systemTopTimer;
 const dragState = { draggingCard: null };
 const defaultTranslations = {
   "pt-BR": {},
@@ -201,10 +231,12 @@ async function init() {
   state.pinnedEmptyGroups = loadPinnedEmptyGroups();
   state.bingBackgroundEnabled = loadBingBackgroundEnabled();
   state.bingBackgroundTransparency = loadBingBackgroundTransparency();
+  state.systemTopOnlyContainers = loadSystemTopOnlyContainers();
   applyContainersPanelOpacity();
   updateBingBackgroundUI();
   applyBingWallpaperFromCache();
   updateOrganizeModeUI();
+  updateSystemTopUI();
   attachEvents();
   startClock();
   startSystemStatsPolling();
@@ -236,8 +268,10 @@ function attachEvents() {
       applyStaticTranslations();
       updateOrganizeModeUI();
       updateBingBackgroundUI();
+      updateSystemTopUI();
       updateClock();
       refreshSystemStats({ silent: true }).catch(() => null);
+      refreshSystemTop({ silent: true }).catch(() => null);
       render();
       if (state.bingBackgroundEnabled) {
         refreshBingWallpaper({ silent: true }).catch(() => null);
@@ -250,7 +284,34 @@ function attachEvents() {
   }
 
   if (dom.systemStatsRefresh) {
-    dom.systemStatsRefresh.addEventListener("click", () => refreshSystemStats());
+    dom.systemStatsRefresh.addEventListener("click", () => {
+      refreshSystemStats();
+      refreshSystemTop({ silent: true }).catch(() => null);
+    });
+  }
+
+  if (dom.metricCpu) {
+    dom.metricCpu.addEventListener("click", () => toggleSystemTop("cpu"));
+    dom.metricCpu.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggleSystemTop("cpu");
+      }
+    });
+  }
+  if (dom.metricRam) {
+    dom.metricRam.addEventListener("click", () => toggleSystemTop("mem"));
+    dom.metricRam.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggleSystemTop("mem");
+      }
+    });
+  }
+  if (dom.systemTopOnlyContainers) {
+    dom.systemTopOnlyContainers.addEventListener("change", () =>
+      setSystemTopOnlyContainers(Boolean(dom.systemTopOnlyContainers.checked))
+    );
   }
 
   if (dom.newFromDockerfile) {
@@ -514,6 +575,153 @@ function startSystemStatsPolling() {
   systemStatsTimer = setInterval(() => refreshSystemStats({ silent: true }).catch(() => null), 4000);
 }
 
+function systemTopTitleForSort(sort) {
+  return sort === "mem"
+    ? t("widgets.system.top_ram", "Top RAM")
+    : t("widgets.system.top_cpu", "Top CPU");
+}
+
+function updateSystemTopUI() {
+  if (dom.systemTopPanel) dom.systemTopPanel.hidden = !state.systemTopOpen;
+
+  if (dom.systemTopTitle) dom.systemTopTitle.textContent = systemTopTitleForSort(state.systemTopSort);
+
+  if (dom.systemTopOnlyContainers) {
+    dom.systemTopOnlyContainers.checked = Boolean(state.systemTopOnlyContainers);
+  }
+
+  if (dom.metricCpu) {
+    const active = state.systemTopOpen && state.systemTopSort === "cpu";
+    dom.metricCpu.classList.toggle("active", active);
+    dom.metricCpu.setAttribute("aria-expanded", active ? "true" : "false");
+  }
+  if (dom.metricRam) {
+    const active = state.systemTopOpen && state.systemTopSort === "mem";
+    dom.metricRam.classList.toggle("active", active);
+    dom.metricRam.setAttribute("aria-expanded", active ? "true" : "false");
+  }
+}
+
+function setSystemTopOnlyContainers(enabled) {
+  state.systemTopOnlyContainers = Boolean(enabled);
+  persistSystemTopOnlyContainers();
+  updateSystemTopUI();
+  if (state.systemTopOpen) refreshSystemTop({ silent: true }).catch(() => null);
+}
+
+function setSystemTopOpen(open) {
+  state.systemTopOpen = Boolean(open);
+  updateSystemTopUI();
+
+  if (!state.systemTopOpen) {
+    if (systemTopTimer) clearInterval(systemTopTimer);
+    systemTopTimer = null;
+    return;
+  }
+
+  refreshSystemTop({ silent: true }).catch(() => null);
+  if (systemTopTimer) clearInterval(systemTopTimer);
+  systemTopTimer = setInterval(() => refreshSystemTop({ silent: true }).catch(() => null), 3000);
+}
+
+function toggleSystemTop(sort) {
+  const nextSort = sort === "mem" ? "mem" : "cpu";
+  if (state.systemTopOpen && state.systemTopSort === nextSort) {
+    setSystemTopOpen(false);
+    return;
+  }
+  state.systemTopSort = nextSort;
+  setSystemTopOpen(true);
+}
+
+function renderSystemTopList(items) {
+  if (!dom.systemTopList) return;
+  dom.systemTopList.innerHTML = "";
+
+  const safeItems = Array.isArray(items) ? items.slice(0, 10) : [];
+  if (!safeItems.length) {
+    const empty = document.createElement("div");
+    empty.className = "system-top-empty";
+    empty.textContent = t("widgets.system.top_empty", "No data.");
+    dom.systemTopList.appendChild(empty);
+    return;
+  }
+
+  safeItems.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "system-top-item";
+
+    const left = document.createElement("div");
+    left.className = "system-top-item-left";
+
+    const name = document.createElement("div");
+    name.className = "system-top-item-name";
+
+    const label = String(item?.name || "").trim();
+    const pid = item?.pid ? Number(item.pid) : null;
+    if (pid && Number.isFinite(pid)) {
+      name.textContent = `${label || t("widgets.system.process_unknown", "process")} (pid ${pid})`;
+    } else {
+      name.textContent = label || t("widgets.system.item_unknown", "unknown");
+    }
+
+    const sub = document.createElement("div");
+    sub.className = "system-top-item-sub";
+
+    const cpu = Number(item?.cpu_percent);
+    const memUsed = item?.mem_used_bytes ?? item?.mem_rss_bytes ?? null;
+    const memLimit = item?.mem_limit_bytes ?? null;
+
+    const cpuLabel = Number.isFinite(cpu) ? `${Math.round(cpu)}%` : "—%";
+    const memLabel =
+      memUsed !== null && Number.isFinite(Number(memUsed))
+        ? memLimit !== null && Number.isFinite(Number(memLimit)) && Number(memLimit) > 0
+          ? `${formatBytes(memUsed)} / ${formatBytes(memLimit)}`
+          : `${formatBytes(memUsed)}`
+        : "—";
+
+    sub.textContent = `${t("widgets.system.cpu", "CPU")}: ${cpuLabel} • ${t("widgets.system.ram", "RAM")}: ${memLabel}`;
+
+    left.appendChild(name);
+    left.appendChild(sub);
+
+    const value = document.createElement("div");
+    value.className = "system-top-item-value";
+    if (state.systemTopSort === "mem") {
+      value.textContent = memUsed !== null && Number.isFinite(Number(memUsed)) ? formatBytes(memUsed) : "—";
+    } else {
+      value.textContent = Number.isFinite(cpu) ? `${cpu.toFixed(cpu < 10 ? 1 : 0)}%` : "—%";
+    }
+
+    row.appendChild(left);
+    row.appendChild(value);
+    dom.systemTopList.appendChild(row);
+  });
+}
+
+async function fetchSystemTop({ scope, sort } = {}) {
+  const resolvedScope = scope || (state.systemTopOnlyContainers ? "containers" : "processes");
+  const resolvedSort = sort || state.systemTopSort;
+  const url = `/api/system-top?scope=${encodeURIComponent(resolvedScope)}&sort=${encodeURIComponent(resolvedSort)}`;
+  const response = await fetch(url);
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.error || t("errors.system_top", "Failed to load usage details."));
+  }
+  return data;
+}
+
+async function refreshSystemTop({ silent } = {}) {
+  if (!state.systemTopOpen) return;
+  try {
+    const data = await fetchSystemTop();
+    renderSystemTopList(data.items || []);
+  } catch (error) {
+    renderSystemTopList([]);
+    if (!silent) showToast(error.message || t("errors.system_top", "Failed to load usage details."), true);
+  }
+}
+
 async function fetchBingWallpaper() {
   const market = getBingMarket();
   const response = await fetch(`/api/bing-wallpaper?mkt=${encodeURIComponent(market)}`);
@@ -735,6 +943,9 @@ function applyStaticTranslations() {
   if (dom.metricCpuLabel) dom.metricCpuLabel.textContent = t("widgets.system.cpu", "CPU");
   if (dom.metricRamLabel) dom.metricRamLabel.textContent = t("widgets.system.ram", "RAM");
   if (dom.systemStatsRefresh) dom.systemStatsRefresh.title = t("widgets.system.refresh_title", "Refresh system status");
+  if (dom.systemTopOnlyContainersLabel) {
+    dom.systemTopOnlyContainersLabel.textContent = t("widgets.system.only_containers", "Only containers");
+  }
   if (dom.refreshContainers) dom.refreshContainers.title = t("panel.refresh_containers", "Refresh containers");
   if (dom.newGroup) dom.newGroup.textContent = t("quick.new_group", "➕ New group");
   if (dom.newFromDockerfile) dom.newFromDockerfile.textContent = t("quick.new_dockerfile", "➕ New via Dockerfile");
