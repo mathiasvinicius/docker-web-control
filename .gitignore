@@ -27,6 +27,9 @@ data/
 *.log
 *.pid
 
+# Runtime dockerfiles (gerados/editados pela UI)
+dockerfiles/
+
 # Uploaded Icons
 icons/*
 !icons/.gitkeep
