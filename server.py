@@ -386,6 +386,8 @@ def _fetch_top_processes(sort_key: str, limit: int) -> list[dict[str, object]]:
         except ValueError:
             continue
         name = parts[1].strip()
+        if name == "ps":
+            continue
         try:
             cpu_percent = float(parts[2])
         except ValueError:
