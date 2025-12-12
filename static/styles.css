@@ -224,9 +224,15 @@ textarea:focus {
 
 .widgets-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1.25rem;
   align-items: start;
+}
+
+@media (min-width: 900px) {
+  .widgets-row {
+    grid-template-columns: minmax(260px, 360px) 1fr;
+  }
 }
 
 .widget-panel {
