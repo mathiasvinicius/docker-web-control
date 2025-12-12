@@ -27,6 +27,37 @@ from typing import Dict, List
 from urllib.parse import urlparse, parse_qs
 
 BASE_DIR = Path(__file__).resolve().parent
+ENV_FILE = BASE_DIR / ".env"
+
+
+def _load_env_file(path: Path) -> None:
+    """Load simple KEY=VALUE pairs from a .env file (without overriding existing env vars)."""
+    try:
+        content = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return
+    except OSError:
+        return
+
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].strip()
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            continue
+        if (value.startswith("'") and value.endswith("'")) or (value.startswith('"') and value.endswith('"')):
+            value = value[1:-1]
+        os.environ.setdefault(key, value)
+
+
+_load_env_file(ENV_FILE)
 STATIC_DIR = BASE_DIR / "static"
 INDEX_FILE = BASE_DIR / "index.html"
 ICONS_DIR = BASE_DIR / "icons"
@@ -927,7 +958,6 @@ class DockerControlHandler(BaseHTTPRequestHandler):
 
     def _handle_upload_icon(self) -> None:
         """Handle icon file upload with multipart/form-data."""
-        import sys
         content_type = self.headers.get("Content-Type", "")
         if not content_type.startswith("multipart/form-data"):
             self._send_json({"error": "Content-Type must be multipart/form-data"}, code=400)
@@ -957,22 +987,9 @@ class DockerControlHandler(BaseHTTPRequestHandler):
 
         body = self.rfile.read(content_length)
 
-        # Debug logging
-        print(f"DEBUG: Content-Type: {content_type}", file=sys.stderr)
-        print(f"DEBUG: Boundary: {boundary}", file=sys.stderr)
-        print(f"DEBUG: Content-Length: {content_length}", file=sys.stderr)
-        print(f"DEBUG: Body length: {len(body)}", file=sys.stderr)
-
         # Parse multipart data
         boundary_bytes = f"--{boundary}".encode()
         parts = body.split(boundary_bytes)
-
-        # Debug: log parts information
-        print(f"DEBUG: Number of parts: {len(parts)}", file=sys.stderr)
-        for i, part in enumerate(parts):
-            print(f"DEBUG: Part {i} length: {len(part)}, has Content-Disposition: {b'Content-Disposition' in part}, has filename: {b'filename=' in part}", file=sys.stderr)
-            if b'Content-Disposition' in part:
-                print(f"DEBUG: Part {i} first 300 bytes: {part[:300]}", file=sys.stderr)
 
         file_data = None
         filename = None
@@ -990,14 +1007,11 @@ class DockerControlHandler(BaseHTTPRequestHandler):
                         break
 
                 if disposition_line and 'filename=' in disposition_line:
-                    print(f"DEBUG: Found disposition line: {disposition_line}", file=sys.stderr)
-
                     # Extract filename (handle both filename="x" and filename=x)
                     if 'filename="' in disposition_line:
                         start = disposition_line.index('filename="') + 10
                         end = disposition_line.index('"', start)
                         filename = disposition_line[start:end]
-                        print(f"DEBUG: Extracted quoted filename: {filename}", file=sys.stderr)
                     elif 'filename=' in disposition_line:
                         # Handle unquoted filename
                         start = disposition_line.index('filename=') + 9
@@ -1007,20 +1021,15 @@ class DockerControlHandler(BaseHTTPRequestHandler):
                             filename = rest[:rest.index(';')].strip()
                         else:
                             filename = rest.strip()
-                        print(f"DEBUG: Extracted unquoted filename: {filename}", file=sys.stderr)
 
                     # Extract file content (after double CRLF)
                     content_start = part.find(b"\r\n\r\n")
-                    print(f"DEBUG: Content start position: {content_start}", file=sys.stderr)
                     if content_start != -1:
                         file_data = part[content_start + 4:]
                         # Remove trailing CRLF
                         if file_data.endswith(b"\r\n"):
                             file_data = file_data[:-2]
-                        print(f"DEBUG: Extracted file data length: {len(file_data)}", file=sys.stderr)
                     break
-
-        print(f"DEBUG: Final state - filename: {filename}, file_data length: {len(file_data) if file_data else 0}", file=sys.stderr)
 
         if not file_data or not filename:
             self._send_json({"error": "No file found in request"}, code=400)

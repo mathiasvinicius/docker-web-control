@@ -31,16 +31,13 @@
         </div>
       </header>
       <main class="page-layout">
-        <section class="panel containers-panel view-panel" data-view="containers">
+        <section class="panel containers-panel">
           <div class="panel-header">
             <h2>Containers</h2>
             <div class="panel-actions">
               <button id="refresh-containers" class="icon-button" title="Atualizar containers">↻</button>
             </div>
           </div>
-
-          <!-- View Mode Toggle -->
-          <div class="view-mode-toggle" style="display: none;"></div>
 
           <div class="quick-actions">
             <button id="new-group" class="ghost small">➕ Novo grupo</button>
@@ -64,88 +61,6 @@
           <div id="cards-view">
             <div class="containers-grid" id="cards-container"></div>
           </div>
-
-          <div id="selection-info" class="selection-info"></div>
-          <div class="table-wrapper" id="table-view">
-            <table>
-              <thead>
-                <tr>
-                  <th>
-                    <input type="checkbox" id="select-all" aria-label="Selecionar todos" />
-                  </th>
-                  <th class="sortable" data-sort="name">
-                    <span id="th-name">Nome</span> <span class="sort-indicator"></span>
-                  </th>
-                  <th class="sortable" data-sort="image">
-                    <span id="th-image">Imagem</span> <span class="sort-indicator"></span>
-                  </th>
-                  <th class="sortable" data-sort="state">
-                    <span id="th-status">Status</span> <span class="sort-indicator"></span>
-                  </th>
-                  <th>
-                    <span id="th-ports">Ports</span>
-                  </th>
-                  <th class="sortable" data-sort="groups">
-                    <span id="th-groups">Grupos</span> <span class="sort-indicator"></span>
-                  </th>
-                  <th class="sortable" data-sort="autostart">
-                    <span id="th-autostart">Auto-start</span> <span class="sort-indicator"></span>
-                  </th>
-                  <th id="th-actions">Ações</th>
-                </tr>
-              </thead>
-              <tbody id="containers-body"></tbody>
-            </table>
-          </div>
-          <div class="pagination-controls" id="pagination-controls">
-            <div class="pagination-info">
-              <span id="pagination-info-text"></span>
-            </div>
-            <div class="pagination-buttons">
-              <button id="prev-page" class="ghost small">← Anterior</button>
-              <span id="page-numbers"></span>
-              <button id="next-page" class="ghost small">Próxima →</button>
-            </div>
-            <div class="pagination-per-page">
-              <label for="items-per-page">Itens por página:</label>
-              <select id="items-per-page">
-                <option value="5" selected>5</option>
-                <option value="10">10</option>
-                <option value="20">20</option>
-                <option value="30">30</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-              </select>
-            </div>
-          </div>
-          <div class="bulk-actions" id="bulk-actions">
-            <div class="group-actions">
-              <form id="assign-group-form">
-                <label for="group-select">Adicionar aos selecionados:</label>
-                <select id="group-select"></select>
-                <button type="submit">Aplicar</button>
-              </form>
-            </div>
-            <div class="control-buttons">
-              <button data-action="start" class="ghost">Iniciar</button>
-              <button data-action="stop" class="ghost">Parar</button>
-              <button data-action="restart" class="ghost">Reiniciar</button>
-            </div>
-          </div>
-
-        </section>
-        <section class="panel groups-panel view-panel hidden" data-view="groups">
-          <div class="panel-header">
-            <h2 id="groups-title">Grupos</h2>
-            <div class="panel-actions">
-              <button id="refresh-groups" class="icon-button" title="Atualizar grupos">↻</button>
-            </div>
-          </div>
-          <form id="create-group-form" class="inline-form">
-            <input type="text" id="new-group-name" placeholder="Nome do grupo" required />
-            <button type="submit" id="create-group-btn">Criar grupo</button>
-          </form>
-          <div id="groups-list" class="groups-list"></div>
         </section>
       </main>
     </div>

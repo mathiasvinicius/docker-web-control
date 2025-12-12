@@ -1,4 +1,2 @@
 # Docker Web Control - Python Dependencies
-
-# Optional: For .env file support
-python-dotenv>=1.0.0
+# No external dependencies required.

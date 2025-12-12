@@ -5,6 +5,7 @@ Executa automaticamente no boot do sistema para iniciar containers configurados.
 """
 
 import json
+import os
 import subprocess
 import sys
 import time
@@ -12,10 +13,41 @@ from pathlib import Path
 
 # Configurações
 BASE_DIR = Path(__file__).resolve().parent
+ENV_FILE = BASE_DIR / ".env"
 AUTOSTART_FILE = BASE_DIR / "data" / "autostart.json"
 GROUPS_FILE = BASE_DIR / "data" / "groups.json"
 LOG_FILE = BASE_DIR / "autostart.log"
-DOCKER_TIMEOUT = 30
+
+
+def load_env_file(path: Path) -> None:
+    """Load simple KEY=VALUE pairs from a .env file (without overriding existing env vars)."""
+    try:
+        content = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return
+    except OSError:
+        return
+
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].strip()
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            continue
+        if (value.startswith("'") and value.endswith("'")) or (value.startswith('"') and value.endswith('"')):
+            value = value[1:-1]
+        os.environ.setdefault(key, value)
+
+
+load_env_file(ENV_FILE)
+DOCKER_TIMEOUT = int(os.environ.get("DOCKER_TIMEOUT", "30"))
 
 
 def log(message: str) -> None:

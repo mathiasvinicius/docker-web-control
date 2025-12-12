@@ -215,7 +215,6 @@ prepare_system_installation() {
     # Core files
     cp "$SCRIPT_DIR/server.py" "$INSTALL_DIR/"
     cp "$SCRIPT_DIR/autostart.py" "$INSTALL_DIR/"
-    cp "$SCRIPT_DIR/config.py" "$INSTALL_DIR/"
     cp "$SCRIPT_DIR/restart.sh" "$INSTALL_DIR/"
     cp "$SCRIPT_DIR/index.html" "$INSTALL_DIR/"
     cp "$SCRIPT_DIR/requirements.txt" "$INSTALL_DIR/"
@@ -263,13 +262,13 @@ install_dependencies() {
     if [ -f "$INSTALL_DIR/requirements.txt" ]; then
         if [ "$SYSTEM_MODE" = true ]; then
             pip3 install -r "$INSTALL_DIR/requirements.txt" 2>/dev/null || {
-                echo "⚠️  Warning: Could not install python-dotenv (optional)"
-                echo "The application will work using environment variables only"
+                echo "⚠️  Warning: Could not install Python dependencies (optional)"
+                echo "The application will still run without them"
             }
         else
             pip3 install -r "$INSTALL_DIR/requirements.txt" --user 2>/dev/null || {
-                echo "⚠️  Warning: Could not install python-dotenv (optional)"
-                echo "The application will work using environment variables only"
+                echo "⚠️  Warning: Could not install Python dependencies (optional)"
+                echo "The application will still run without them"
             }
         fi
     fi
@@ -496,7 +495,7 @@ update_installation() {
 
     echo ""
     echo "Update will:"
-    echo "  ✅ Update code files (server.py, autostart.py, config.py, etc.)"
+    echo "  ✅ Update code files (server.py, autostart.py, etc.)"
     echo "  ✅ Update static files (HTML, CSS, JS)"
     echo "  ✅ Update documentation (README.md, etc.)"
     echo "  ⚠️  Preserve: .env, data/, icons/"
@@ -518,7 +517,6 @@ update_installation() {
     # Core files
     cp "$SCRIPT_DIR/server.py" "$INSTALL_DIR/"
     cp "$SCRIPT_DIR/autostart.py" "$INSTALL_DIR/"
-    cp "$SCRIPT_DIR/config.py" "$INSTALL_DIR/"
     cp "$SCRIPT_DIR/restart.sh" "$INSTALL_DIR/"
     cp "$SCRIPT_DIR/index.html" "$INSTALL_DIR/"
     cp "$SCRIPT_DIR/requirements.txt" "$INSTALL_DIR/"

@@ -1,9 +1,9 @@
 # Docker Web Control
 
-**Web UI to manage Docker containers with grouping, auto-start, per-container/group aliases and icons, per-tab refresh, filters, and start/stop/restart actions.**
+**Web UI to manage Docker containers with visual cards, grouping, auto-start, aliases/icons, icon upload, filters, and start/stop/restart actions.**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.6%2B-blue)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Docker](https://img.shields.io/badge/docker-required-blue)
 
 ## 📸 Screenshots
@@ -12,22 +12,25 @@
 
 ## ✨ Features
 
-- 🐳 **Docker Container Management**: Start, stop, restart containers with a single click
-- 📦 **Group Management**: Organize containers into groups for batch operations
-- 🚀 **Auto-start Configuration**: Set containers or groups to start automatically
+- 🐳 **Docker Container Management**: Start, stop, restart and delete containers
+- 🎴 **Visual Cards**: Group cards + standalone container cards
+- 📦 **Group Management**: Create groups, add/remove containers, batch actions
+- 🚀 **Auto-start Configuration**: Set containers or groups to start automatically (updates restart policy)
 - 🏷️ **Aliases & Icons**: Custom names and icons for containers and groups
 - 📤 **Icon Upload**: Upload custom icon images (PNG, JPG, SVG, etc.) with automatic storage
-- 🔄 **Live Refresh**: Per-tab refresh buttons to update container status
-- 🔍 **Advanced Filters**: Search by name, image, or group; show only running containers
+- 🧱 **Create Containers**: Create via Dockerfile or via CLI command
+- 📦 **Export**: Export containers/groups as ZIP
+- 🔄 **Refresh**: Refresh button to update container status
+- 🔍 **Filters**: Search by name, image, or group; show only running containers
 - 🌐 **Multi-language**: Support for Portuguese (BR) and English
-- 📊 **Sorting**: Sort containers by name, image, status, groups, or auto-start
 - 🎨 **Modern UI**: Clean, responsive design with dark mode support
 
 ## 📋 Requirements
 
 - **Docker**: Must be installed and running
-- **Python 3.6+**: For the backend server
+- **Python 3.10+**: For the backend server
 - **Docker permissions**: User must be in the `docker` group
+- **Dependencies**: No external Python dependencies required
 
 ## 🚀 Quick Start
 
@@ -86,6 +89,8 @@ No need to reconfigure - just pull and update!
 ## ⚙️ Configuration
 
 Edit the `.env` file to customize settings:
+
+`server.py` and `autostart.py` load `.env` automatically (without overriding existing environment variables).
 
 ```bash
 # Server Configuration
@@ -212,10 +217,10 @@ Icons will appear next to container and group names throughout the interface.
 ```
 docker-web-control/
 ├── server.py                    # Main Python backend server
-├── config.py                    # Configuration loader
 ├── autostart.py                 # Auto-start script
 ├── install.sh                   # Installation script
 ├── restart.sh                   # Server restart script
+├── uninstall.sh                 # Uninstall script
 ├── requirements.txt             # Python dependencies
 ├── .env.example                 # Example configuration file
 ├── index.html                   # Main HTML interface
@@ -223,13 +228,11 @@ docker-web-control/
 │   ├── app.js                   # Frontend JavaScript
 │   ├── styles.css               # CSS styles
 │   └── translations.json        # i18n translations
-├── data/                        # Data directory (created on first run)
-│   ├── groups.json              # Container groups
-│   ├── group_aliases.json       # Group aliases
-│   ├── container_aliases.json   # Container aliases
-│   └── autostart.json           # Auto-start configuration
-├── icons/                       # Uploaded icon images (created on first upload)
-├── docker-control.service       # Systemd service file
+├── data/                        # Runtime data (gitignored)
+├── icons/                       # Uploaded icons (gitignored; icons/.gitkeep tracked)
+├── dockerfiles/                 # Runtime Dockerfiles (gitignored)
+├── docker-web-control.service   # Systemd service example
+├── docker-web-control-autostart.service # Systemd auto-start example
 └── README.md                    # This file
 ```
 
@@ -238,7 +241,7 @@ docker-web-control/
 - Commands are executed with `shlex.quote()` protection against shell injection
 - Server runs with the same permissions as the process owner
 - Configurable timeout prevents hanging operations
-- No external dependencies required (python-dotenv is optional)
+- No external dependencies required
 
 ## 🌐 Multi-language Support
 
@@ -247,7 +250,7 @@ The interface supports multiple languages through the `translations.json` file. 
 - Portuguese (Brazil) - `pt-BR`
 - English - `en`
 
-To change the language, use the language selector in the sidebar.
+To change the language, use the language selector in the top bar.
 
 ## 🐛 Troubleshooting
 

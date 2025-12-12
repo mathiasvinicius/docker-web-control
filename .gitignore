@@ -16,6 +16,9 @@ ENV/
 *.swp
 *.swo
 *~
+.claude/
+examples/
+hierarchical-helpers.js
 
 # OS
 .DS_Store
