@@ -229,12 +229,6 @@ textarea:focus {
   align-items: start;
 }
 
-@media (min-width: 900px) {
-  .widgets-row {
-    grid-template-columns: minmax(260px, 360px) 1fr;
-  }
-}
-
 .widget-panel {
   padding: 0.85rem 1rem;
 }
