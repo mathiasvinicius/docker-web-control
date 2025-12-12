@@ -34,10 +34,10 @@
 	            <div id="bing-bg-panel" class="bing-bg-panel" hidden>
 	              <label class="bing-bg-row">
 	                <input type="checkbox" id="bing-bg-enabled" />
-	                <span>Ativar fundo</span>
+	                <span id="bing-bg-enabled-label">Ativar fundo</span>
 	              </label>
 	              <div class="bing-bg-row">
-	                <span>Transparência</span>
+	                <span id="bing-bg-transparency-label">Transparência</span>
 	                <input type="range" id="bing-bg-transparency" min="0" max="90" step="5" />
 	                <span id="bing-bg-transparency-value">—</span>
 	              </div>
@@ -55,7 +55,7 @@
       <main class="page-layout">
         <section class="panel containers-panel">
           <div class="panel-header">
-            <h2>Containers</h2>
+            <h2 id="containers-title">Containers</h2>
             <div class="panel-actions">
               <button id="refresh-containers" class="icon-button" title="Atualizar containers">↻</button>
             </div>

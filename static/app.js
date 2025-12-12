@@ -152,6 +152,7 @@ const dom = {
   filterInput: document.getElementById("filter-input"),
   runningOnly: document.getElementById("running-only"),
   refreshContainers: document.getElementById("refresh-containers"),
+  containersTitle: document.getElementById("containers-title"),
   toast: document.getElementById("toast"),
   langSelect: document.getElementById("lang-select"),
   navLanguageLabel: document.getElementById("nav-language-label"),
@@ -168,7 +169,9 @@ const dom = {
   bingControl: document.getElementById("bing-bg-control"),
   bingPanel: document.getElementById("bing-bg-panel"),
   bingEnabled: document.getElementById("bing-bg-enabled"),
+  bingEnabledLabel: document.getElementById("bing-bg-enabled-label"),
   bingTransparency: document.getElementById("bing-bg-transparency"),
+  bingTransparencyLabel: document.getElementById("bing-bg-transparency-label"),
   bingTransparencyValue: document.getElementById("bing-bg-transparency-value"),
 };
 
@@ -215,6 +218,8 @@ function attachEvents() {
     dom.langSelect.addEventListener("change", () => {
       state.currentLang = dom.langSelect.value;
       applyStaticTranslations();
+      updateOrganizeModeUI();
+      updateBingBackgroundUI();
       render();
       if (state.bingBackgroundEnabled) {
         refreshBingWallpaper({ silent: true }).catch(() => null);
@@ -250,7 +255,7 @@ function attachEvents() {
   if (dom.bingEnabled) {
     dom.bingEnabled.addEventListener("change", () => {
       setBingBackgroundEnabled(Boolean(dom.bingEnabled.checked)).catch((error) =>
-        showToast(error.message || "Erro ao alternar fundo.", true)
+        showToast(error.message || t("errors.toggle_background", "Error toggling background."), true)
       );
     });
   }
@@ -297,10 +302,12 @@ function updateOrganizeModeUI() {
 
   if (dom.organizeToggle) {
     dom.organizeToggle.classList.toggle("active", state.organizeMode);
-    dom.organizeToggle.textContent = state.organizeMode ? "✓ Organizando" : "↕ Organizar";
+    dom.organizeToggle.textContent = state.organizeMode
+      ? t("quick.organize_active", "✓ Organizing")
+      : t("quick.organize", "↕ Organize");
     dom.organizeToggle.title = state.organizeMode
-      ? "Clique para sair do modo organizar"
-      : "Reorganizar cards (arrastar e soltar)";
+      ? t("quick.organize_exit_title", "Click to exit organize mode")
+      : t("quick.organize_title", "Reorder cards (drag and drop)");
   }
 }
 
@@ -317,16 +324,21 @@ function setOrganizeMode(enabled) {
   updateOrganizeModeUI();
   render();
 
-  showToast(state.organizeMode ? "Modo organizar ativo: arraste os cards." : "Modo organizar desativado.");
+  showToast(
+    state.organizeMode
+      ? t("toast.organize_enabled", "Organize mode enabled: drag cards.")
+      : t("toast.organize_disabled", "Organize mode disabled.")
+  );
 }
 
 function updateBingBackgroundUI() {
   if (!dom.bingToggle) return;
   dom.bingToggle.classList.toggle("active", state.bingBackgroundEnabled);
-  dom.bingToggle.textContent = state.bingBackgroundEnabled ? "🌄 Fundo Bing ✓" : "🌄 Fundo Bing";
+  const baseLabel = t("bing.button", "🌄 Bing background");
+  dom.bingToggle.textContent = state.bingBackgroundEnabled ? `${baseLabel} ✓` : baseLabel;
   dom.bingToggle.title = state.bingBackgroundEnabled
-    ? "Clique para desativar fundo do Bing"
-    : "Clique para ativar fundo do Bing";
+    ? t("bing.title_disable", "Click to disable Bing background")
+    : t("bing.title_enable", "Click to enable Bing background");
 
   if (dom.bingEnabled) dom.bingEnabled.checked = state.bingBackgroundEnabled;
   if (dom.bingTransparency) dom.bingTransparency.value = String(state.bingBackgroundTransparency);
@@ -384,9 +396,9 @@ async function fetchBingWallpaper() {
   const response = await fetch(`/api/bing-wallpaper?mkt=${encodeURIComponent(market)}`);
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.details || data.error || "Falha ao obter wallpaper do Bing.");
+    throw new Error(data.details || data.error || t("errors.bing_fetch", "Failed to fetch Bing wallpaper."));
   }
-  if (!data?.url) throw new Error("Wallpaper inválido.");
+  if (!data?.url) throw new Error(t("errors.bing_invalid", "Invalid wallpaper."));
   return data;
 }
 
@@ -395,7 +407,7 @@ async function refreshBingWallpaper({ silent } = {}) {
   const payload = await fetchBingWallpaper();
   applyBingWallpaper(payload);
   persistBingWallpaperCache(payload);
-  if (!silent) showToast("Fundo do Bing atualizado.");
+  if (!silent) showToast(t("toast.bing_updated", "Bing background updated."));
 }
 
 async function setBingBackgroundEnabled(enabled) {
@@ -406,7 +418,7 @@ async function setBingBackgroundEnabled(enabled) {
   if (!state.bingBackgroundEnabled) {
     clearBingWallpaper();
     setBingBackgroundPanelOpen(false);
-    showToast("Fundo do Bing desativado.");
+    showToast(t("toast.bing_disabled", "Bing background disabled."));
     return;
   }
 
@@ -415,10 +427,10 @@ async function setBingBackgroundEnabled(enabled) {
 
   try {
     await refreshBingWallpaper({ silent: true });
-    showToast("Fundo do Bing ativado.");
+    showToast(t("toast.bing_enabled", "Bing background enabled."));
   } catch (error) {
     if (hasCachedWallpaper) {
-      showToast(error.message || "Falha ao atualizar fundo do Bing.", true);
+      showToast(error.message || t("errors.bing_update_failed", "Failed to update Bing background."), true);
       return;
     }
     state.bingBackgroundEnabled = false;
@@ -479,7 +491,7 @@ function applyCardDragMeta(card, cardType, cardKey) {
     card.classList.remove("dragging");
     if (!state.organizeMode) return;
     persistCardOrderFromDom().catch((error) =>
-      showToast(error.message || "Erro ao salvar organização.", true)
+      showToast(error.message || t("errors.save_order", "Error saving order."), true)
     );
   });
 }
@@ -539,7 +551,7 @@ async function persistCardOrderFromDom() {
     saveContainerAliasesBatch(containerPayload),
   ]);
 
-  showToast("Organização salva.");
+  showToast(t("toast.order_saved", "Order saved."));
 }
 
 async function loadAll() {
@@ -558,7 +570,7 @@ async function loadAll() {
     applyAutoGrouping(true);
     render();
   } catch (error) {
-    showToast(error.message || "Erro ao carregar dados.", true);
+    showToast(error.message || t("errors.load_data", "Error loading data."), true);
   }
 }
 
@@ -590,9 +602,25 @@ function t(path, fallback = "") {
 }
 
 function applyStaticTranslations() {
+  document.documentElement.lang = state.currentLang === "en" ? "en" : "pt-BR";
   if (dom.appTitle) dom.appTitle.textContent = t("app.title");
   if (dom.appSubtitle) dom.appSubtitle.textContent = t("app.subtitle");
   if (dom.navLanguageLabel) dom.navLanguageLabel.textContent = t("nav.language");
+  if (dom.containersTitle) dom.containersTitle.textContent = t("nav.containers", "Containers");
+  if (dom.refreshContainers) dom.refreshContainers.title = t("panel.refresh_containers", "Refresh containers");
+  if (dom.newGroup) dom.newGroup.textContent = t("quick.new_group", "➕ New group");
+  if (dom.newFromDockerfile) dom.newFromDockerfile.textContent = t("quick.new_dockerfile", "➕ New via Dockerfile");
+  if (dom.newFromCommand) dom.newFromCommand.textContent = t("quick.new_cli", "➕ New via CLI");
+  if (dom.organizeToggle) {
+    dom.organizeToggle.textContent = t("quick.organize", "↕ Organize");
+    dom.organizeToggle.title = t("quick.organize_title", "Reorder cards (drag and drop)");
+  }
+  if (dom.bingToggle) {
+    dom.bingToggle.textContent = t("bing.button", "🌄 Bing background");
+    dom.bingToggle.title = t("bing.config_title", "Configure Bing background");
+  }
+  if (dom.bingEnabledLabel) dom.bingEnabledLabel.textContent = t("bing.enable", "Enable background");
+  if (dom.bingTransparencyLabel) dom.bingTransparencyLabel.textContent = t("bing.transparency", "Transparency");
   if (dom.filterInput) dom.filterInput.placeholder = t("filters.search_placeholder");
   if (dom.labelRunningOnly) dom.labelRunningOnly.textContent = t("filters.running_only");
 }
@@ -601,7 +629,7 @@ async function loadContainers() {
   const response = await fetch("/api/containers");
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || "Falha ao listar containers");
+    throw new Error(data.error || t("errors.list_containers", "Failed to list containers."));
   }
   state.containerAliases = data.aliases || {};
   return data.containers || [];
@@ -611,7 +639,7 @@ async function loadGroups() {
   const response = await fetch("/api/groups");
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || "Falha ao carregar grupos");
+    throw new Error(data.error || t("errors.load_groups", "Failed to load groups."));
   }
   return {
     groups: data.groups || {},
@@ -629,7 +657,7 @@ async function persistGroups(successMessage, options = {}) {
   });
   const body = await response.json();
   if (!response.ok) {
-    throw new Error(body.error || "Não foi possível salvar os grupos.");
+    throw new Error(body.error || t("errors.save_groups", "Failed to save groups."));
   }
   state.groups = body.groups || {};
   state.groupAliases = body.aliases || {};
@@ -641,7 +669,7 @@ async function loadAutostart() {
   const response = await fetch("/api/autostart");
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || "Falha ao carregar auto-start");
+    throw new Error(data.error || t("errors.load_autostart", "Failed to load auto-start."));
   }
   return data.autostart || { groups: [], containers: [] };
 }
@@ -654,7 +682,7 @@ async function saveAutostart() {
   });
   const body = await response.json();
   if (!response.ok) {
-    throw new Error(body.error || "Não foi possível salvar auto-start.");
+    throw new Error(body.error || t("errors.save_autostart", "Failed to save auto-start."));
   }
   state.autostart = body.autostart || { groups: [], containers: [] };
 }
@@ -667,7 +695,7 @@ async function setRestartPolicy(containerId, policy) {
   });
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.details || data.error || "Falha ao atualizar restart policy.");
+    throw new Error(data.details || data.error || t("errors.restart_policy", "Failed to update restart policy."));
   }
   return data.restart_policy || policy;
 }
@@ -687,7 +715,7 @@ async function saveContainerAlias(containerId, aliasValue, iconValue) {
   });
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || "Não foi possível salvar o apelido.");
+    throw new Error(data.error || t("errors.save_alias", "Failed to save alias."));
   }
   state.containerAliases = data.aliases || {};
 }
@@ -700,7 +728,7 @@ async function saveContainerAliasesBatch(aliases) {
   });
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || "Não foi possível salvar a organização.");
+    throw new Error(data.error || t("errors.save_order", "Failed to save order."));
   }
   state.containerAliases = data.aliases || {};
 }
@@ -748,7 +776,7 @@ function applyAutoGrouping(silent = false) {
       created === 1 ? "" : "s"
     }, ${updated} preenchido${updated === 1 ? "" : "s"}).`;
     persistGroups(silent ? null : message).catch((error) =>
-      showToast(error.message || "Erro ao agrupar automaticamente.", true)
+      showToast(error.message || t("errors.auto_group", "Error auto-grouping."), true)
     );
   }
 }
@@ -893,13 +921,13 @@ function getGroupActions(groupName) {
 function groupActionLabel(action) {
   switch (action) {
     case "start":
-      return "▶ Iniciar Todos";
+      return t("groups.actions.start_all", "Start all");
     case "stop":
-      return "■ Parar Todos";
+      return t("groups.actions.stop_all", "Stop all");
     case "restart":
-      return "⟳ Reiniciar";
+      return t("groups.actions.restart_all", "Restart all");
     case "delete":
-      return "🗑 Excluir";
+      return t("groups.actions.delete_group", "Delete group");
     default:
       return action;
   }
@@ -929,7 +957,7 @@ function showToast(message, isError = false) {
   }, 4000);
 }
 
-function openModal({ title, body, confirmText = "Salvar", onConfirm }) {
+function openModal({ title, body, confirmText, onConfirm }) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
 
@@ -946,11 +974,11 @@ function openModal({ title, body, confirmText = "Salvar", onConfirm }) {
 
   const cancelBtn = document.createElement("button");
   cancelBtn.className = "ghost";
-  cancelBtn.textContent = "Cancelar";
+  cancelBtn.textContent = t("common.cancel", "Cancel");
 
   const confirmBtn = document.createElement("button");
   confirmBtn.className = "ghost";
-  confirmBtn.textContent = confirmText;
+  confirmBtn.textContent = confirmText || t("common.save", "Save");
 
   actions.appendChild(cancelBtn);
   actions.appendChild(confirmBtn);
@@ -963,7 +991,7 @@ function openModal({ title, body, confirmText = "Salvar", onConfirm }) {
       await onConfirm();
       backdrop.remove();
     } catch (error) {
-      showToast(error.message || "Erro ao salvar", true);
+      showToast(error.message || t("errors.save", "Error saving"), true);
     } finally {
       confirmBtn.disabled = false;
     }
@@ -1093,7 +1121,7 @@ function renderCards() {
     empty.style.textAlign = "center";
     empty.style.padding = "2rem";
     empty.style.opacity = "0.6";
-    empty.textContent = "Nenhum container encontrado";
+    empty.textContent = t("cards.empty", "No containers found.");
     dom.cardsContainer.appendChild(empty);
   }
 }
@@ -1113,15 +1141,30 @@ function computeGroupStatus(containerIds) {
   });
 
   if (total === 0) {
-    return { running: 0, total: 0, label: "Sem containers", className: "status-exited" };
+    return { running: 0, total: 0, label: t("groups.status.empty", "No containers"), className: "status-exited" };
   }
   if (running === total) {
-    return { running, total, label: `${total}/${total} rodando`, className: "status-running" };
+    return {
+      running,
+      total,
+      label: `${total}/${total} ${t("groups.status.running_suffix", "running")}`,
+      className: "status-running",
+    };
   }
   if (running === 0) {
-    return { running, total, label: `Parados (${total})`, className: "status-exited" };
+    return {
+      running,
+      total,
+      label: `${t("groups.status.stopped_prefix", "Stopped")} (${total})`,
+      className: "status-exited",
+    };
   }
-  return { running, total, label: `${running}/${total} rodando`, className: "status-mixed" };
+  return {
+    running,
+    total,
+    label: `${running}/${total} ${t("groups.status.running_suffix", "running")}`,
+    className: "status-mixed",
+  };
 }
 
 function openAddContainersToGroup(groupName) {
@@ -1135,7 +1178,7 @@ function openAddContainersToGroup(groupName) {
     );
 
   if (!candidates.length) {
-    showToast("Nenhum container disponível para adicionar.", true);
+    showToast(t("groups.add.none_available", "No containers available to add."), true);
     return;
   }
 
@@ -1146,7 +1189,7 @@ function openAddContainersToGroup(groupName) {
 
   const search = document.createElement("input");
   search.type = "search";
-  search.placeholder = "Buscar containers…";
+  search.placeholder = t("groups.add.search_placeholder", "Search containers…");
   body.appendChild(search);
 
   const list = document.createElement("div");
@@ -1176,7 +1219,7 @@ function openAddContainersToGroup(groupName) {
     if (!filtered.length) {
       const empty = document.createElement("div");
       empty.style.opacity = "0.75";
-      empty.textContent = "Nenhum container encontrado.";
+      empty.textContent = t("table.empty", "No containers found.");
       list.appendChild(empty);
       return;
     }
@@ -1193,7 +1236,10 @@ function openAddContainersToGroup(groupName) {
 
       const text = document.createElement("span");
       const display = containerDisplay(c);
-      const stateLabel = (c.state || "").toLowerCase() === "running" ? "running" : "stopped";
+      const stateLabel =
+        (c.state || "").toLowerCase() === "running"
+          ? t("status.running", "running")
+          : t("status.stopped", "stopped");
       text.textContent = `${display.main} • ${stateLabel} • ${c.image || "—"}`;
 
       row.appendChild(checkbox);
@@ -1206,9 +1252,9 @@ function openAddContainersToGroup(groupName) {
   renderList();
 
   openModal({
-    title: `Adicionar containers em "${groupLabel(groupName)}"`,
+    title: `${t("groups.add.modal_title_prefix", "Add containers to")} "${groupLabel(groupName)}"`,
     body,
-    confirmText: "Adicionar",
+    confirmText: t("common.add", "Add"),
     onConfirm: async () => {
       const chosen = [];
       candidates.forEach((c) => {
@@ -1217,7 +1263,7 @@ function openAddContainersToGroup(groupName) {
       });
 
       if (!chosen.length) {
-        showToast("Selecione ao menos um container.", true);
+        showToast(t("groups.add.select_at_least_one", "Select at least one container."), true);
         return;
       }
 
@@ -1226,7 +1272,7 @@ function openAddContainersToGroup(groupName) {
       chosen.forEach((id) => next.add(id));
       state.groups[groupName] = Array.from(next);
 
-      await persistGroups("Containers adicionados ao grupo.");
+      await persistGroups(t("groups.add.added_to_group", "Containers added to the group."));
     },
   });
 
@@ -1280,7 +1326,9 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
 
   const badge = document.createElement("span");
   badge.className = "group-card-glass-badge";
-  badge.textContent = `${groupContainerIds.length} container${groupContainerIds.length > 1 ? "s" : ""}`;
+  const containerWord =
+    groupContainerIds.length === 1 ? t("cards.container_singular", "container") : t("cards.container_plural", "containers");
+  badge.textContent = `${groupContainerIds.length} ${containerWord}`;
   statsRow.appendChild(badge);
 
   const groupStatus = computeGroupStatus(groupContainerIds);
@@ -1295,8 +1343,8 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
   const isGroupEnabled = state.autostart.groups.includes(groupName);
   const autostartButton = document.createElement("button");
   autostartButton.className = `group-autostart-toggle ${isGroupEnabled ? "enabled" : "disabled"}`;
-  autostartButton.textContent = isGroupEnabled ? "Auto-start: Habilitado" : "Auto-start: Desabilitado";
-  autostartButton.title = "Clique para alterar auto-start do grupo";
+  autostartButton.textContent = isGroupEnabled ? t("autostart.enabled") : t("autostart.disabled");
+  autostartButton.title = t("autostart.group_toggle_title", "Toggle group auto-start");
   autostartButton.addEventListener("click", async (event) => {
     const currentEnabled = state.autostart.groups.includes(groupName);
     const button = event.target;
@@ -1314,7 +1362,7 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
     }
     const newEnabled = !currentEnabled;
     button.disabled = true;
-    button.textContent = newEnabled ? "Auto-start: Habilitado" : "Auto-start: Desabilitado";
+    button.textContent = newEnabled ? t("autostart.enabled") : t("autostart.disabled");
     button.className = `group-autostart-toggle ${newEnabled ? "enabled" : "disabled"}`;
 
     try {
@@ -1327,9 +1375,11 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
           if (c) c.restart_policy = newPolicy;
         });
       }
-      showToast(`Auto-start do grupo ${newEnabled ? "habilitado" : "desabilitado"}`);
+      showToast(
+        newEnabled ? t("autostart.group_enabled_toast", "Group auto-start enabled") : t("autostart.group_disabled_toast", "Group auto-start disabled")
+      );
     } catch (error) {
-      showToast(error.message || "Erro ao salvar", true);
+      showToast(error.message || t("errors.save", "Error saving"), true);
       state.autostart.groups = previousGroups;
       if (groupContainerIds.length) {
         const revertPolicy = currentEnabled ? "unless-stopped" : "no";
@@ -1343,7 +1393,7 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
           if (c) c.restart_policy = previousPolicies[id] || c.restart_policy;
         });
       }
-      button.textContent = currentEnabled ? "Auto-start: Habilitado" : "Auto-start: Desabilitado";
+      button.textContent = currentEnabled ? t("autostart.enabled") : t("autostart.disabled");
       button.className = `group-autostart-toggle ${currentEnabled ? "enabled" : "disabled"}`;
     }
     button.disabled = false;
@@ -1353,7 +1403,7 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
   const expandBtn = document.createElement("button");
   expandBtn.className = "card-expand-btn";
   expandBtn.textContent = "▼";
-  expandBtn.title = "Expandir/recolher";
+  expandBtn.title = t("cards.expand_collapse", "Expand/collapse");
 
   const quickActions = document.createElement("div");
   quickActions.className = "card-quick-actions";
@@ -1362,7 +1412,7 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
     e.stopPropagation();
     openAddContainersToGroup(groupName);
   });
-  addQuickBtn.title = "Adicionar container";
+  addQuickBtn.title = t("groups.actions.add_container", "Add container");
   quickActions.appendChild(addQuickBtn);
 
   getGroupActions(groupName)
@@ -1378,46 +1428,20 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
 
   const exportBtn = createButton("⬇", "ghost small", (e) => {
     e.stopPropagation();
-    exportGroup(groupName, false).catch((err) => showToast(err.message || "Erro ao exportar", true));
+    exportGroup(groupName, false).catch((err) => showToast(err.message || t("errors.export", "Error exporting"), true));
   });
-  exportBtn.title = "Exportar";
+  exportBtn.title = t("common.export", "Export");
   quickActions.appendChild(exportBtn);
 
   const deleteQuickBtn = createButton("🗑", "ghost small danger", (e) => {
     e.stopPropagation();
     deleteGroup(groupName);
   });
-  deleteQuickBtn.title = "Excluir grupo";
+  deleteQuickBtn.title = t("groups.actions.delete_group", "Delete group");
   quickActions.appendChild(deleteQuickBtn);
 
   const collapsible = document.createElement("div");
   collapsible.className = "card-collapsible";
-
-  const actions = document.createElement("div");
-  actions.className = "group-card-glass-actions";
-
-  const addBtn = createButton("➕ Adicionar container", "ghost small", (e) => {
-    e.stopPropagation();
-    openAddContainersToGroup(groupName);
-  });
-  actions.appendChild(addBtn);
-
-  getGroupActions(groupName).forEach((action) => {
-    actions.appendChild(
-      createButton(
-        groupActionLabel(action),
-        `ghost small${action === "delete" ? " danger" : ""}`,
-        () => (action === "delete" ? deleteGroup(groupName) : handleGroupAction(groupName, action))
-      )
-    );
-  });
-
-  actions.appendChild(
-    createButton("⬇ Exportar", "ghost small", () =>
-      exportGroup(groupName, false).catch((err) => showToast(err.message || "Erro ao exportar", true))
-    )
-  );
-  collapsible.appendChild(actions);
 
   const list = document.createElement("div");
   list.className = "container-list-glass";
@@ -1432,8 +1456,8 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
     const empty = document.createElement("div");
     empty.style.opacity = "0.75";
     empty.textContent = groupContainerIds.length
-      ? "Nenhum container visível com os filtros atuais."
-      : "Nenhum container neste grupo.";
+      ? t("groups.empty_filtered", "No containers visible with current filters.")
+      : t("groups.empty_group", "No containers in this group.");
     list.appendChild(empty);
   }
 
@@ -1490,7 +1514,7 @@ function createContainerItem(container, groupName) {
 
   const meta = document.createElement("div");
   meta.className = "container-item-glass-meta";
-  meta.textContent = `${container.image} • Ports: ${container.ports || "—"}`;
+  meta.textContent = `${container.image} • ${t("table.ports", "Ports")}: ${container.ports || "—"}`;
   details.appendChild(meta);
 
   item.appendChild(details);
@@ -1508,22 +1532,22 @@ function createContainerItem(container, groupName) {
 
   const exportBtn = createButton("⬇", "ghost small", () =>
     exportContainer(container.id, false, container.name).catch((err) =>
-      showToast(err.message || "Erro ao exportar", true)
+      showToast(err.message || t("errors.export", "Error exporting"), true)
     )
   );
-  exportBtn.title = "Exportar";
+  exportBtn.title = t("common.export", "Export");
   actions.appendChild(exportBtn);
 
   const editBtn = createButton("✎", "ghost small", () => openDockerfileEditor(container.id, container.name));
-  editBtn.title = "Editar Dockerfile";
+  editBtn.title = t("containers.edit_dockerfile", "Edit Dockerfile");
   actions.appendChild(editBtn);
 
   if (groupName) {
-    const removeBtn = createButton("⨯ Grupo", "ghost small danger", (e) => {
+    const removeBtn = createButton("⨯", "ghost small danger", (e) => {
       e.stopPropagation();
       removeFromGroup(groupName, container.id);
     });
-    removeBtn.title = `Remover do grupo "${groupLabel(groupName)}"`;
+    removeBtn.title = `${t("groups.actions.remove_from_group", "Remove from group")} "${groupLabel(groupName)}"`;
     actions.appendChild(removeBtn);
   }
 
@@ -1590,49 +1614,26 @@ function createStandaloneCard(container, selectedGroups) {
   const exportBtn = createButton("⬇", "ghost small", (e) => {
     e.stopPropagation();
     exportContainer(container.id, false, container.name).catch((err) =>
-      showToast(err.message || "Erro ao exportar", true)
+      showToast(err.message || t("errors.export", "Error exporting"), true)
     );
   });
-  exportBtn.title = "Exportar";
+  exportBtn.title = t("common.export", "Export");
   quickActions.appendChild(exportBtn);
 
   const editBtn = createButton("✎", "ghost small", (e) => {
     e.stopPropagation();
     openDockerfileEditor(container.id, container.name);
   });
-  editBtn.title = "Editar Dockerfile";
+  editBtn.title = t("containers.edit_dockerfile", "Edit Dockerfile");
   quickActions.appendChild(editBtn);
 
   const expandBtn = document.createElement("button");
   expandBtn.className = "card-expand-btn";
   expandBtn.textContent = "▼";
-  expandBtn.title = "Expandir/recolher";
+  expandBtn.title = t("cards.expand_collapse", "Expand/collapse");
 
   const collapsible = document.createElement("div");
   collapsible.className = "card-collapsible";
-
-  const actions = document.createElement("div");
-  actions.className = "group-card-glass-actions";
-
-  getContainerActions(container).forEach((action) => {
-    actions.appendChild(
-      createButton(actionLabel(action), `ghost small${action === "delete" ? " danger" : ""}`, () =>
-        handleAction(container.id, action)
-      )
-    );
-  });
-
-  actions.appendChild(
-    createButton("⬇ Exportar", "ghost small", () =>
-      exportContainer(container.id, false, container.name).catch((err) =>
-        showToast(err.message || "Erro ao exportar", true)
-      )
-    )
-  );
-  actions.appendChild(
-    createButton("✎ Editar Dockerfile", "ghost small", () => openDockerfileEditor(container.id, container.name))
-  );
-  collapsible.appendChild(actions);
 
   collapsible.appendChild(aliasEditor.form);
 
@@ -1640,8 +1641,8 @@ function createStandaloneCard(container, selectedGroups) {
   details.style.padding = "1rem";
   details.style.textAlign = "left";
 
-  details.appendChild(createDetailRow("Image", container.image || "—"));
-  details.appendChild(createDetailRow("Ports", container.ports || "—"));
+  details.appendChild(createDetailRow(t("table.image", "Image"), container.image || "—"));
+  details.appendChild(createDetailRow(t("table.ports", "Ports"), container.ports || "—"));
 
   collapsible.appendChild(details);
 
@@ -1684,7 +1685,7 @@ function createAliasEditor(container, onSaved) {
   const renameButton = document.createElement("button");
   renameButton.type = "button";
   renameButton.className = "icon-button";
-  renameButton.title = "Editar apelido e ícone";
+  renameButton.title = t("alias.rename_icon_title", "Edit alias and icon");
   renameButton.textContent = "✎";
 
   const aliasForm = document.createElement("form");
@@ -1692,7 +1693,7 @@ function createAliasEditor(container, onSaved) {
 
   const aliasInput = document.createElement("input");
   aliasInput.type = "text";
-  aliasInput.placeholder = "Apelido (opcional)";
+  aliasInput.placeholder = t("alias.label", "Alias (optional)");
   const metaAlias = state.containerAliases[container.id];
   aliasInput.value = metaAlias && typeof metaAlias === "object" ? metaAlias.alias || "" : metaAlias || "";
 
@@ -1702,7 +1703,7 @@ function createAliasEditor(container, onSaved) {
   const aliasSpacer = document.createElement("button");
   aliasSpacer.type = "button";
   aliasSpacer.className = "ghost small upload-placeholder";
-  aliasSpacer.textContent = "📤 Upload";
+  aliasSpacer.textContent = t("upload.button", "📤 Upload");
   aliasSpacer.tabIndex = -1;
   aliasSpacer.setAttribute("aria-hidden", "true");
 
@@ -1711,7 +1712,7 @@ function createAliasEditor(container, onSaved) {
 
   const iconInput = document.createElement("input");
   iconInput.type = "text";
-  iconInput.placeholder = "Ícone (URL) ex: http://icons.casaos.local/...";
+  iconInput.placeholder = t("alias.icon_label", "Icon (URL)");
   iconInput.value = metaAlias && typeof metaAlias === "object" ? metaAlias.icon || "" : "";
 
   const iconContainer = document.createElement("div");
@@ -1720,8 +1721,8 @@ function createAliasEditor(container, onSaved) {
   const uploadButton = document.createElement("button");
   uploadButton.type = "button";
   uploadButton.className = "ghost small";
-  uploadButton.textContent = "📤 Upload";
-  uploadButton.title = "Upload icon image";
+  uploadButton.textContent = t("upload.button", "📤 Upload");
+  uploadButton.title = t("upload.title", "Upload icon image");
 
   const fileInput = document.createElement("input");
   fileInput.type = "file";
@@ -1733,27 +1734,27 @@ function createAliasEditor(container, onSaved) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      showToast("Arquivo muito grande. Máximo: 5MB", true);
+      showToast(t("upload.file_too_large", "File too large. Maximum: 5MB"), true);
       return;
     }
     try {
       uploadButton.disabled = true;
-      uploadButton.textContent = "⏳ Enviando...";
+      uploadButton.textContent = t("upload.uploading", "⏳ Uploading...");
 
       const formData = new FormData();
       formData.append("icon", file);
 
       const response = await fetch("/api/upload-icon", { method: "POST", body: formData });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Erro ao fazer upload");
+      if (!response.ok) throw new Error(data.error || t("upload.error", "Error uploading icon"));
 
       iconInput.value = data.url;
-      showToast("Ícone enviado com sucesso!");
+      showToast(t("upload.success", "Icon uploaded successfully!"));
     } catch (error) {
-      showToast(error.message || "Erro ao fazer upload do ícone", true);
+      showToast(error.message || t("upload.error", "Error uploading icon"), true);
     } finally {
       uploadButton.disabled = false;
-      uploadButton.textContent = "📤 Upload";
+      uploadButton.textContent = t("upload.button", "📤 Upload");
       fileInput.value = "";
     }
   });
@@ -1765,12 +1766,12 @@ function createAliasEditor(container, onSaved) {
   const saveAlias = document.createElement("button");
   saveAlias.type = "submit";
   saveAlias.className = "ghost small";
-  saveAlias.textContent = "Salvar";
+  saveAlias.textContent = t("alias.save", "Save");
 
   const cancelAlias = document.createElement("button");
   cancelAlias.type = "button";
   cancelAlias.className = "ghost small";
-  cancelAlias.textContent = "Cancelar";
+  cancelAlias.textContent = t("alias.cancel", "Cancel");
 
   const actionsRow = document.createElement("div");
   actionsRow.className = "alias-actions";
@@ -1809,7 +1810,7 @@ function createAliasEditor(container, onSaved) {
       if (onSaved) onSaved();
       else render();
     } catch (error) {
-      showToast(error.message || "Erro ao salvar apelido.", true);
+      showToast(error.message || t("errors.save_alias", "Error saving alias."), true);
     }
   });
 
@@ -1822,7 +1823,7 @@ function createGroupAliasEditor(groupName, onSaved) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "icon-button";
-  button.title = "Editar apelido e ícone";
+  button.title = t("alias.rename_icon_title", "Edit alias and icon");
   button.textContent = "✎";
 
   const aliasForm = document.createElement("form");
@@ -1830,7 +1831,7 @@ function createGroupAliasEditor(groupName, onSaved) {
 
   const aliasInput = document.createElement("input");
   aliasInput.type = "text";
-  aliasInput.placeholder = "Apelido (opcional)";
+  aliasInput.placeholder = t("alias.label", "Alias (optional)");
   aliasInput.value = aliasMeta && typeof aliasMeta === "object" ? aliasMeta.alias || "" : aliasMeta || "";
 
   const aliasRow = document.createElement("div");
@@ -1839,7 +1840,7 @@ function createGroupAliasEditor(groupName, onSaved) {
   const aliasSpacer = document.createElement("button");
   aliasSpacer.type = "button";
   aliasSpacer.className = "ghost small upload-placeholder";
-  aliasSpacer.textContent = "📤 Upload";
+  aliasSpacer.textContent = t("upload.button", "📤 Upload");
   aliasSpacer.tabIndex = -1;
   aliasSpacer.setAttribute("aria-hidden", "true");
 
@@ -1848,7 +1849,7 @@ function createGroupAliasEditor(groupName, onSaved) {
 
   const iconInput = document.createElement("input");
   iconInput.type = "text";
-  iconInput.placeholder = "Ícone (URL) ex: http://icons.casaos.local/...";
+  iconInput.placeholder = t("alias.icon_label", "Icon (URL)");
   iconInput.value = aliasMeta && typeof aliasMeta === "object" ? aliasMeta.icon || "" : "";
 
   const iconContainer = document.createElement("div");
@@ -1857,8 +1858,8 @@ function createGroupAliasEditor(groupName, onSaved) {
   const uploadButton = document.createElement("button");
   uploadButton.type = "button";
   uploadButton.className = "ghost small";
-  uploadButton.textContent = "📤 Upload";
-  uploadButton.title = "Upload icon image";
+  uploadButton.textContent = t("upload.button", "📤 Upload");
+  uploadButton.title = t("upload.title", "Upload icon image");
 
   const fileInput = document.createElement("input");
   fileInput.type = "file";
@@ -1870,27 +1871,27 @@ function createGroupAliasEditor(groupName, onSaved) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      showToast("Arquivo muito grande. Máximo: 5MB", true);
+      showToast(t("upload.file_too_large", "File too large. Maximum: 5MB"), true);
       return;
     }
     try {
       uploadButton.disabled = true;
-      uploadButton.textContent = "⏳ Enviando...";
+      uploadButton.textContent = t("upload.uploading", "⏳ Uploading...");
 
       const formData = new FormData();
       formData.append("icon", file);
 
       const response = await fetch("/api/upload-icon", { method: "POST", body: formData });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Erro ao fazer upload");
+      if (!response.ok) throw new Error(data.error || t("upload.error", "Error uploading icon"));
 
       iconInput.value = data.url;
-      showToast("Ícone enviado com sucesso!");
+      showToast(t("upload.success", "Icon uploaded successfully!"));
     } catch (error) {
-      showToast(error.message || "Erro ao fazer upload do ícone", true);
+      showToast(error.message || t("upload.error", "Error uploading icon"), true);
     } finally {
       uploadButton.disabled = false;
-      uploadButton.textContent = "📤 Upload";
+      uploadButton.textContent = t("upload.button", "📤 Upload");
       fileInput.value = "";
     }
   });
@@ -1902,12 +1903,12 @@ function createGroupAliasEditor(groupName, onSaved) {
   const saveBtn = document.createElement("button");
   saveBtn.type = "submit";
   saveBtn.className = "ghost small";
-  saveBtn.textContent = "Salvar";
+  saveBtn.textContent = t("alias.save", "Save");
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
   cancelBtn.className = "ghost small";
-  cancelBtn.textContent = "Cancelar";
+  cancelBtn.textContent = t("alias.cancel", "Cancel");
 
   const actionsRow = document.createElement("div");
   actionsRow.className = "alias-actions";
@@ -1946,7 +1947,7 @@ function createGroupAliasEditor(groupName, onSaved) {
       if (onSaved) onSaved();
       else render();
     } catch (error) {
-      showToast(error.message || "Erro ao renomear grupo.", true);
+      showToast(error.message || t("errors.rename_group", "Error renaming group."), true);
     }
   });
 
@@ -1974,13 +1975,13 @@ function getAutostartStatus(container, selectedGroups) {
 
 function applyAutostartButtonState(button, container, selectedGroups) {
   const status = getAutostartStatus(container, selectedGroups);
-  let label = "Desabilitado";
+  let label = t("autostart.status.disabled", "Disabled");
   if (status.enabledIndividually) {
-    label = "Habilitado (individual)";
+    label = t("autostart.status.enabled_individual", "Enabled (individual)");
   } else if (status.enabledGroups.length) {
-    label = "Habilitado (grupo)";
+    label = t("autostart.status.enabled_group", "Enabled (group)");
   } else if (status.enabledByDocker) {
-    label = "Habilitado (Docker)";
+    label = t("autostart.status.enabled_docker", "Enabled (Docker)");
   }
 
   button.textContent = label;
@@ -1988,14 +1989,24 @@ function applyAutostartButtonState(button, container, selectedGroups) {
 
   if (status.enabledGroups.length || status.enabledIndividually) {
     const sources = [];
-    if (status.enabledGroups.length) sources.push(`grupo(s): ${status.enabledGroups.join(", ")}`);
-    if (status.enabledIndividually) sources.push("individual");
-    if (status.enabledByDocker) sources.push(`Docker (${status.dockerRestartPolicy})`);
-    button.title = `Habilitado via ${sources.join(" + ")}`;
+    if (status.enabledGroups.length) {
+      sources.push(`${t("autostart.source_groups", "group(s)")}: ${status.enabledGroups.join(", ")}`);
+    }
+    if (status.enabledIndividually) sources.push(t("autostart.source_individual", "individual"));
+    if (status.enabledByDocker) {
+      sources.push(`${t("autostart.source_docker", "Docker")} (${status.dockerRestartPolicy})`);
+    }
+    button.title = `${t("autostart.title_enabled_via", "Enabled via")} ${sources.join(" + ")}`;
   } else if (status.enabledByDocker) {
-    button.title = `Habilitado pela restart policy do Docker (${status.dockerRestartPolicy}). Alterar aqui não muda o Docker.`;
+    button.title = `${t(
+      "autostart.title_enabled_by_docker_prefix",
+      "Enabled by Docker restart policy"
+    )} (${status.dockerRestartPolicy}). ${t(
+      "autostart.title_enabled_by_docker_suffix",
+      "Changing here does not change Docker."
+    )}`;
   } else {
-    button.title = "Clique para habilitar auto-start";
+    button.title = t("autostart.title_click_to_enable", "Click to enable auto-start");
   }
 
   return status;
@@ -2008,8 +2019,13 @@ function createAutostartToggle(container, selectedGroups) {
     const status = getAutostartStatus(container, selectedGroups);
     const badge = document.createElement("span");
     badge.className = `autostart-toggle read-only ${status.enabled ? "enabled" : "disabled"}`;
-    badge.textContent = status.enabled ? "Habilitado (grupo)" : "Desabilitado (grupo)";
-    badge.title = `Gerencie o auto-start deste container no card do grupo (${groupsForContainer.join(", ")}).`;
+    badge.textContent = status.enabled
+      ? t("autostart.status.enabled_group", "Enabled (group)")
+      : t("autostart.status.disabled_group", "Disabled (group)");
+    badge.title = `${t(
+      "autostart.title_manage_in_group_card",
+      "Manage this container's auto-start in the group card"
+    )} (${groupsForContainer.join(", ")}).`;
     badge.setAttribute("aria-disabled", "true");
     return badge;
   }
@@ -2037,13 +2053,13 @@ function createAutostartToggle(container, selectedGroups) {
       const status = applyAutostartButtonState(button, container, selectedGroups);
       const toastMsg =
         status.enabledByDocker && !status.enabledIndividually && !status.enabledGroups.length
-          ? "Auto-start ativo pelo Docker (restart policy)"
+          ? t("autostart.toast.docker_only", "Auto-start enabled by Docker (restart policy)")
           : status.enabled
-          ? "Auto-start habilitado"
-          : "Auto-start desabilitado";
+          ? t("autostart.toast.enabled", "Auto-start enabled")
+          : t("autostart.toast.disabled", "Auto-start disabled");
       showToast(toastMsg);
     } catch (error) {
-      showToast(error.message || "Erro ao salvar", true);
+      showToast(error.message || t("errors.save", "Error saving"), true);
       state.autostart.containers = previous;
       container.restart_policy = previousPolicy;
       applyAutostartButtonState(button, container, selectedGroups);
@@ -2057,7 +2073,7 @@ async function downloadFile(url, filename) {
   const response = await fetch(url);
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || "Falha ao baixar arquivo");
+    throw new Error(error.error || t("errors.download_failed", "Failed to download file."));
   }
   const blob = await response.blob();
   const link = document.createElement("a");
@@ -2087,7 +2103,7 @@ async function openDockerfileEditor(containerId, displayName) {
   try {
     const res = await fetch(`/api/containers/${encodeURIComponent(containerId)}/dockerfile`);
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Falha ao carregar Dockerfile");
+    if (!res.ok) throw new Error(data.error || t("dockerfile.load_failed", "Failed to load Dockerfile."));
 
     const textarea = document.createElement("textarea");
     textarea.value = data.content || "";
@@ -2095,9 +2111,9 @@ async function openDockerfileEditor(containerId, displayName) {
     body.appendChild(textarea);
 
     openModal({
-      title: `Editar Dockerfile - ${displayName || containerId}`,
+      title: `${t("dockerfile.modal_title_prefix", "Edit Dockerfile")} - ${displayName || containerId}`,
       body,
-      confirmText: "Salvar e reiniciar",
+      confirmText: t("dockerfile.confirm_save_restart", "Save & restart"),
       onConfirm: async () => {
         const response = await fetch(`/api/containers/${encodeURIComponent(containerId)}/dockerfile`, {
           method: "POST",
@@ -2105,13 +2121,13 @@ async function openDockerfileEditor(containerId, displayName) {
           body: JSON.stringify({ content: textarea.value }),
         });
         const respData = await response.json();
-        if (!response.ok) throw new Error(respData.error || "Falha ao salvar Dockerfile");
-        showToast("Dockerfile salvo e container reiniciado.");
+        if (!response.ok) throw new Error(respData.error || t("dockerfile.save_failed", "Failed to save Dockerfile."));
+        showToast(t("dockerfile.saved_restarted", "Dockerfile saved and container restarted."));
         await loadContainersOnly();
       },
     });
   } catch (error) {
-    showToast(error.message || "Erro ao editar Dockerfile", true);
+    showToast(error.message || t("dockerfile.edit_failed", "Failed to edit Dockerfile."), true);
   }
 }
 
@@ -2122,21 +2138,21 @@ function openNewGroup() {
   body.style.gap = "0.65rem";
 
   const nameInput = document.createElement("input");
-  nameInput.placeholder = "Nome do grupo";
+  nameInput.placeholder = t("groups.create_placeholder", "Group name");
   body.appendChild(nameInput);
 
   openModal({
-    title: "Criar grupo",
+    title: t("groups.create_title", "Create group"),
     body,
-    confirmText: "Criar",
+    confirmText: t("common.create", "Create"),
     onConfirm: async () => {
       const name = nameInput.value.trim();
       if (!name) {
-        showToast("O nome do grupo é obrigatório.", true);
+        showToast(t("groups.create_required", "Group name is required."), true);
         return;
       }
       if (state.groups[name]) {
-        showToast("Já existe um grupo com esse nome.", true);
+        showToast(t("groups.create_already_exists", "A group with this name already exists."), true);
         return;
       }
 
@@ -2145,7 +2161,7 @@ function openNewGroup() {
 
       state.groups[name] = [];
       pinEmptyGroup(name);
-      await persistGroups("Grupo criado.");
+      await persistGroups(t("groups.created_toast", "Group created."));
       setTimeout(() => openAddContainersToGroup(name), 0);
     },
   });
@@ -2160,13 +2176,16 @@ function openNewContainerFromDockerfile() {
   body.style.gap = "0.65rem";
 
   const nameInput = document.createElement("input");
-  nameInput.placeholder = "Nome do container (usado como tag e --name)";
+  nameInput.placeholder = t(
+    "containers.create_dockerfile.name_placeholder",
+    "Container name (used as tag and --name)"
+  );
   const cmdInput = document.createElement("input");
-  cmdInput.placeholder = "Comando (opcional, ex: node server.js)";
+  cmdInput.placeholder = t("containers.create_dockerfile.command_placeholder", "Command (optional)");
   const envInput = document.createElement("textarea");
-  envInput.placeholder = "Arquivo .env (opcional)";
+  envInput.placeholder = t("containers.create_dockerfile.env_placeholder", ".env file (optional)");
   const dockerfileArea = document.createElement("textarea");
-  dockerfileArea.placeholder = "Dockerfile";
+  dockerfileArea.placeholder = t("containers.create_dockerfile.dockerfile_placeholder", "Dockerfile");
 
   body.appendChild(nameInput);
   body.appendChild(cmdInput);
@@ -2174,9 +2193,9 @@ function openNewContainerFromDockerfile() {
   body.appendChild(dockerfileArea);
 
   openModal({
-    title: "Criar container via Dockerfile",
+    title: t("containers.create_dockerfile.title", "Create container via Dockerfile"),
     body,
-    confirmText: "Build & Run",
+    confirmText: t("containers.create_dockerfile.confirm", "Build & Run"),
     onConfirm: async () => {
       const payload = {
         name: nameInput.value.trim(),
@@ -2191,8 +2210,8 @@ function openNewContainerFromDockerfile() {
         body: JSON.stringify(payload),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Falha ao criar container");
-      showToast("Container criado.");
+      if (!response.ok) throw new Error(data.error || t("errors.create_container", "Failed to create container."));
+      showToast(t("toast.container_created", "Container created."));
       await loadContainersOnly();
     },
   });
@@ -2201,13 +2220,16 @@ function openNewContainerFromDockerfile() {
 function openNewContainerFromCommand() {
   const body = document.createElement("div");
   const textarea = document.createElement("textarea");
-  textarea.placeholder = "docker run -d --name meuapp -p 8080:80 imagem:tag";
+  textarea.placeholder = t(
+    "containers.create_cli.placeholder",
+    "docker run -d --name myapp -p 8080:80 image:tag"
+  );
   body.appendChild(textarea);
 
   openModal({
-    title: "Criar container via CLI",
+    title: t("containers.create_cli.title", "Create container via CLI"),
     body,
-    confirmText: "Executar",
+    confirmText: t("common.run", "Run"),
     onConfirm: async () => {
       const response = await fetch("/api/containers/create-from-command", {
         method: "POST",
@@ -2215,8 +2237,8 @@ function openNewContainerFromCommand() {
         body: JSON.stringify({ command: textarea.value }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Falha ao executar comando");
-      showToast("Comando enviado.");
+      if (!response.ok) throw new Error(data.error || t("errors.run_command", "Failed to run command."));
+      showToast(t("toast.command_sent", "Command sent."));
       await loadContainersOnly();
     },
   });
@@ -2226,25 +2248,35 @@ function confirmGroupAction(groupName, action) {
   const label = groupActionLabel(action);
   const displayName = groupLabel(groupName);
   if (action === "delete") {
-    return confirm(`Excluir o grupo "${displayName}"? Os containers permanecem no sistema.`);
+    return confirm(
+      `${t("confirm.delete_group", "Delete group")} "${displayName}"? ${t(
+        "confirm.delete_group_note",
+        "Containers remain in the system."
+      )}`
+    );
   }
-  return confirm(`${label} para o grupo "${displayName}"?`);
+  return confirm(`${label} ${t("confirm.for_group", "for group")} "${displayName}"?`);
 }
 
 async function handleAction(containerId, action) {
   if (action === "delete") {
     const container = state.containers.find((c) => c.id === containerId);
     const displayName = container ? containerDisplay(container).main : containerId;
-    const confirmed = confirm(`Excluir o container "${displayName}"? Esta ação não pode ser desfeita.`);
+    const confirmed = confirm(
+      `${t("confirm.delete_container", "Delete container")} "${displayName}"? ${t(
+        "confirm.cannot_undo",
+        "This action cannot be undone."
+      )}`
+    );
     if (!confirmed) return;
   }
 
   try {
     await controlContainer(containerId, action);
-    showToast(`Ação "${actionLabel(action)}" enviada.`);
+    showToast(`${t("toast.action_sent", "Action sent")}: "${actionLabel(action)}".`);
     await loadContainersOnly();
   } catch (error) {
-    showToast(error.message || "Falha ao executar ação.", true);
+    showToast(error.message || t("errors.action_failed", "Failed to run action."), true);
   }
 }
 
@@ -2253,16 +2285,16 @@ async function handleGroupAction(groupName, action) {
 
   const ids = getGroupContainerIds(groupName);
   if (!ids.length) {
-    showToast("Nenhum container disponível neste grupo.", true);
+    showToast(t("groups.none_available", "No containers available in this group."), true);
     return;
   }
 
   try {
     await Promise.all(ids.map((id) => controlContainer(id, action)));
-    showToast(`Ação ${action} enviada para ${groupName}.`);
+    showToast(`${t("toast.action_sent", "Action sent")}: ${groupActionLabel(action)} → ${groupLabel(groupName)}.`);
     await loadContainersOnly();
   } catch (error) {
-    showToast(error.message || "Erro ao aplicar ação no grupo.", true);
+    showToast(error.message || t("errors.group_action_failed", "Failed to run group action."), true);
   }
 }
 
@@ -2272,7 +2304,7 @@ async function loadContainersOnly() {
     applyAutoGrouping(true);
     render();
   } catch (error) {
-    showToast(error.message || "Falha ao atualizar containers.", true);
+    showToast(error.message || t("errors.refresh_containers", "Failed to refresh containers."), true);
   }
 }
 
@@ -2280,7 +2312,7 @@ async function controlContainer(id, action) {
   const response = await fetch(`/api/containers/${id}/${action}`, { method: "POST" });
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.details || data.error || "Erro ao comunicar com o Docker.");
+    throw new Error(data.details || data.error || t("errors.docker_communication", "Error communicating with Docker."));
   }
   return data;
 }
@@ -2291,7 +2323,7 @@ async function deleteGroup(name) {
   delete state.groupAliases[name];
   unpinGroup(name);
   try {
-    await persistGroups("Grupo removido.");
+    await persistGroups(t("groups.deleted_toast", "Group removed."));
   } catch (error) {
     showToast(error.message, true);
   }
@@ -2301,7 +2333,7 @@ async function removeFromGroup(groupName, containerId) {
   const group = state.groups[groupName] || [];
   state.groups[groupName] = group.filter((id) => id !== containerId);
   try {
-    await persistGroups("Container removido do grupo.");
+    await persistGroups(t("groups.removed_container_toast", "Container removed from group."));
   } catch (error) {
     showToast(error.message, true);
   }
@@ -2327,7 +2359,7 @@ async function renameGroup(name, aliasValue, iconValue) {
     if (existingOrder !== null) next.order = existingOrder;
     state.groupAliases[name] = next;
   }
-  await persistGroups("Grupo renomeado (apelido/ícone atualizado).");
+  await persistGroups(t("groups.renamed_toast", "Group updated (alias/icon updated)."));
 }
 
 init();

@@ -10,9 +10,39 @@
       "groups": "Grupos",
       "language": "Idioma"
     },
+    "panel": {
+      "refresh_containers": "Atualizar containers"
+    },
+    "quick": {
+      "new_group": "➕ Novo grupo",
+      "new_dockerfile": "➕ Novo via Dockerfile",
+      "new_cli": "➕ Novo via CLI",
+      "organize": "↕ Organizar",
+      "organize_active": "✓ Organizando",
+      "organize_title": "Reorganizar cards (arrastar e soltar)",
+      "organize_exit_title": "Clique para sair do modo organizar"
+    },
+    "bing": {
+      "button": "🌄 Fundo Bing",
+      "config_title": "Configurar fundo do Bing",
+      "enable": "Ativar fundo",
+      "transparency": "Transparência",
+      "title_enable": "Clique para ativar fundo do Bing",
+      "title_disable": "Clique para desativar fundo do Bing"
+    },
     "filters": {
       "search_placeholder": "Filtrar por nome, imagem ou grupo",
       "running_only": "Mostrar somente ativos"
+    },
+    "cards": {
+      "empty": "Nenhum container encontrado.",
+      "expand_collapse": "Expandir/recolher",
+      "container_singular": "container",
+      "container_plural": "containers"
+    },
+    "status": {
+      "running": "rodando",
+      "stopped": "parado"
     },
     "table": {
       "name": "Nome",
@@ -34,18 +64,147 @@
     "groups": {
       "title": "Grupos",
       "create_placeholder": "Nome do grupo",
-      "create_button": "Criar grupo"
+      "create_button": "Criar grupo",
+      "create_title": "Criar grupo",
+      "create_required": "O nome do grupo é obrigatório.",
+      "create_already_exists": "Já existe um grupo com esse nome.",
+      "created_toast": "Grupo criado.",
+      "deleted_toast": "Grupo removido.",
+      "removed_container_toast": "Container removido do grupo.",
+      "renamed_toast": "Grupo atualizado (apelido/ícone atualizado).",
+      "empty_filtered": "Nenhum container visível com os filtros atuais.",
+      "empty_group": "Nenhum container neste grupo.",
+      "none_available": "Nenhum container disponível neste grupo.",
+      "actions": {
+        "start_all": "Iniciar todos",
+        "stop_all": "Parar todos",
+        "restart_all": "Reiniciar todos",
+        "delete_group": "Excluir grupo",
+        "add_container": "Adicionar container",
+        "remove_from_group": "Remover do grupo"
+      },
+      "status": {
+        "empty": "Sem containers",
+        "running_suffix": "rodando",
+        "stopped_prefix": "Parados"
+      },
+      "add": {
+        "none_available": "Nenhum container disponível para adicionar.",
+        "search_placeholder": "Buscar containers…",
+        "modal_title_prefix": "Adicionar containers em",
+        "select_at_least_one": "Selecione ao menos um container.",
+        "added_to_group": "Containers adicionados ao grupo."
+      }
     },
     "autostart": {
       "enabled": "Auto-start: Habilitado",
-      "disabled": "Auto-start: Desabilitado"
+      "disabled": "Auto-start: Desabilitado",
+      "group_toggle_title": "Clique para alterar auto-start do grupo",
+      "group_enabled_toast": "Auto-start do grupo habilitado",
+      "group_disabled_toast": "Auto-start do grupo desabilitado",
+      "status": {
+        "disabled": "Desabilitado",
+        "enabled_individual": "Habilitado (individual)",
+        "enabled_group": "Habilitado (grupo)",
+        "disabled_group": "Desabilitado (grupo)",
+        "enabled_docker": "Habilitado (Docker)"
+      },
+      "source_groups": "grupo(s)",
+      "source_individual": "individual",
+      "source_docker": "Docker",
+      "title_enabled_via": "Habilitado via",
+      "title_enabled_by_docker_prefix": "Habilitado pela restart policy do Docker",
+      "title_enabled_by_docker_suffix": "Alterar aqui não muda o Docker.",
+      "title_click_to_enable": "Clique para habilitar auto-start",
+      "title_manage_in_group_card": "Gerencie o auto-start deste container no card do grupo",
+      "toast": {
+        "docker_only": "Auto-start ativo pelo Docker (restart policy)",
+        "enabled": "Auto-start habilitado",
+        "disabled": "Auto-start desabilitado"
+      }
+    },
+    "common": {
+      "add": "Adicionar",
+      "export": "Exportar",
+      "save": "Salvar",
+      "cancel": "Cancelar",
+      "create": "Criar",
+      "run": "Executar"
+    },
+    "confirm": {
+      "delete_group": "Excluir o grupo",
+      "delete_group_note": "Os containers permanecem no sistema.",
+      "for_group": "para o grupo",
+      "delete_container": "Excluir o container",
+      "cannot_undo": "Esta ação não pode ser desfeita."
+    },
+    "toast": {
+      "action_sent": "Ação enviada",
+      "organize_enabled": "Modo organizar ativo: arraste os cards.",
+      "organize_disabled": "Modo organizar desativado.",
+      "bing_updated": "Fundo do Bing atualizado.",
+      "bing_enabled": "Fundo do Bing ativado.",
+      "bing_disabled": "Fundo do Bing desativado.",
+      "order_saved": "Organização salva.",
+      "container_created": "Container criado.",
+      "command_sent": "Comando enviado."
+    },
+    "errors": {
+      "save": "Erro ao salvar",
+      "export": "Erro ao exportar",
+      "save_alias": "Erro ao salvar apelido.",
+      "rename_group": "Erro ao renomear grupo.",
+      "action_failed": "Falha ao executar ação.",
+      "group_action_failed": "Erro ao aplicar ação no grupo.",
+      "toggle_background": "Erro ao alternar fundo.",
+      "bing_fetch": "Falha ao obter wallpaper do Bing.",
+      "bing_invalid": "Wallpaper inválido.",
+      "bing_update_failed": "Falha ao atualizar fundo do Bing.",
+      "save_order": "Erro ao salvar organização.",
+      "load_data": "Erro ao carregar dados.",
+      "list_containers": "Falha ao listar containers.",
+      "load_groups": "Falha ao carregar grupos.",
+      "save_groups": "Não foi possível salvar os grupos.",
+      "load_autostart": "Falha ao carregar auto-start.",
+      "save_autostart": "Não foi possível salvar auto-start.",
+      "restart_policy": "Falha ao atualizar restart policy.",
+      "auto_group": "Erro ao agrupar automaticamente.",
+      "refresh_containers": "Falha ao atualizar containers.",
+      "docker_communication": "Erro ao comunicar com o Docker.",
+      "download_failed": "Falha ao baixar arquivo.",
+      "create_container": "Falha ao criar container.",
+      "run_command": "Falha ao executar comando."
+    },
+    "dockerfile": {
+      "load_failed": "Falha ao carregar Dockerfile.",
+      "modal_title_prefix": "Editar Dockerfile",
+      "confirm_save_restart": "Salvar e reiniciar",
+      "save_failed": "Falha ao salvar Dockerfile.",
+      "saved_restarted": "Dockerfile salvo e container reiniciado.",
+      "edit_failed": "Erro ao editar Dockerfile."
+    },
+    "containers": {
+      "edit_dockerfile": "Editar Dockerfile",
+      "create_dockerfile": {
+        "title": "Criar container via Dockerfile",
+        "confirm": "Build & Run",
+        "name_placeholder": "Nome do container (usado como tag e --name)",
+        "command_placeholder": "Comando (opcional, ex: node server.js)",
+        "env_placeholder": "Arquivo .env (opcional)",
+        "dockerfile_placeholder": "Dockerfile"
+      },
+      "create_cli": {
+        "title": "Criar container via CLI",
+        "placeholder": "docker run -d --name meuapp -p 8080:80 imagem:tag"
+      }
     },
     "alias": {
       "label": "Apelido (opcional)",
       "icon_label": "Ícone (URL) ex: http://icons.casaos.local/...",
       "save": "Salvar",
       "cancel": "Cancelar",
-      "rename": "Editar apelido"
+      "rename": "Editar apelido",
+      "rename_icon_title": "Editar apelido e ícone"
     },
     "upload": {
       "button": "📤 Upload",
@@ -67,9 +226,39 @@
       "groups": "Groups",
       "language": "Language"
     },
+    "panel": {
+      "refresh_containers": "Refresh containers"
+    },
+    "quick": {
+      "new_group": "➕ New group",
+      "new_dockerfile": "➕ New via Dockerfile",
+      "new_cli": "➕ New via CLI",
+      "organize": "↕ Organize",
+      "organize_active": "✓ Organizing",
+      "organize_title": "Reorder cards (drag and drop)",
+      "organize_exit_title": "Click to exit organize mode"
+    },
+    "bing": {
+      "button": "🌄 Bing background",
+      "config_title": "Configure Bing background",
+      "enable": "Enable background",
+      "transparency": "Transparency",
+      "title_enable": "Click to enable Bing background",
+      "title_disable": "Click to disable Bing background"
+    },
     "filters": {
       "search_placeholder": "Filter by name, image, or group",
       "running_only": "Show only running"
+    },
+    "cards": {
+      "empty": "No containers found.",
+      "expand_collapse": "Expand/collapse",
+      "container_singular": "container",
+      "container_plural": "containers"
+    },
+    "status": {
+      "running": "running",
+      "stopped": "stopped"
     },
     "table": {
       "name": "Name",
@@ -91,18 +280,147 @@
     "groups": {
       "title": "Groups",
       "create_placeholder": "Group name",
-      "create_button": "Create group"
+      "create_button": "Create group",
+      "create_title": "Create group",
+      "create_required": "Group name is required.",
+      "create_already_exists": "A group with this name already exists.",
+      "created_toast": "Group created.",
+      "deleted_toast": "Group removed.",
+      "removed_container_toast": "Container removed from group.",
+      "renamed_toast": "Group updated (alias/icon updated).",
+      "empty_filtered": "No containers visible with current filters.",
+      "empty_group": "No containers in this group.",
+      "none_available": "No containers available in this group.",
+      "actions": {
+        "start_all": "Start all",
+        "stop_all": "Stop all",
+        "restart_all": "Restart all",
+        "delete_group": "Delete group",
+        "add_container": "Add container",
+        "remove_from_group": "Remove from group"
+      },
+      "status": {
+        "empty": "No containers",
+        "running_suffix": "running",
+        "stopped_prefix": "Stopped"
+      },
+      "add": {
+        "none_available": "No containers available to add.",
+        "search_placeholder": "Search containers…",
+        "modal_title_prefix": "Add containers to",
+        "select_at_least_one": "Select at least one container.",
+        "added_to_group": "Containers added to the group."
+      }
     },
     "autostart": {
       "enabled": "Auto-start: Enabled",
-      "disabled": "Auto-start: Disabled"
+      "disabled": "Auto-start: Disabled",
+      "group_toggle_title": "Toggle group auto-start",
+      "group_enabled_toast": "Group auto-start enabled",
+      "group_disabled_toast": "Group auto-start disabled",
+      "status": {
+        "disabled": "Disabled",
+        "enabled_individual": "Enabled (individual)",
+        "enabled_group": "Enabled (group)",
+        "disabled_group": "Disabled (group)",
+        "enabled_docker": "Enabled (Docker)"
+      },
+      "source_groups": "group(s)",
+      "source_individual": "individual",
+      "source_docker": "Docker",
+      "title_enabled_via": "Enabled via",
+      "title_enabled_by_docker_prefix": "Enabled by Docker restart policy",
+      "title_enabled_by_docker_suffix": "Changing here does not change Docker.",
+      "title_click_to_enable": "Click to enable auto-start",
+      "title_manage_in_group_card": "Manage this container's auto-start in the group card",
+      "toast": {
+        "docker_only": "Auto-start enabled by Docker (restart policy)",
+        "enabled": "Auto-start enabled",
+        "disabled": "Auto-start disabled"
+      }
+    },
+    "common": {
+      "add": "Add",
+      "export": "Export",
+      "save": "Save",
+      "cancel": "Cancel",
+      "create": "Create",
+      "run": "Run"
+    },
+    "confirm": {
+      "delete_group": "Delete group",
+      "delete_group_note": "Containers remain in the system.",
+      "for_group": "for group",
+      "delete_container": "Delete container",
+      "cannot_undo": "This action cannot be undone."
+    },
+    "toast": {
+      "action_sent": "Action sent",
+      "organize_enabled": "Organize mode enabled: drag cards.",
+      "organize_disabled": "Organize mode disabled.",
+      "bing_updated": "Bing background updated.",
+      "bing_enabled": "Bing background enabled.",
+      "bing_disabled": "Bing background disabled.",
+      "order_saved": "Order saved.",
+      "container_created": "Container created.",
+      "command_sent": "Command sent."
+    },
+    "errors": {
+      "save": "Error saving",
+      "export": "Error exporting",
+      "save_alias": "Error saving alias.",
+      "rename_group": "Error renaming group.",
+      "action_failed": "Failed to run action.",
+      "group_action_failed": "Failed to run group action.",
+      "toggle_background": "Error toggling background.",
+      "bing_fetch": "Failed to fetch Bing wallpaper.",
+      "bing_invalid": "Invalid wallpaper.",
+      "bing_update_failed": "Failed to update Bing background.",
+      "save_order": "Error saving order.",
+      "load_data": "Error loading data.",
+      "list_containers": "Failed to list containers.",
+      "load_groups": "Failed to load groups.",
+      "save_groups": "Failed to save groups.",
+      "load_autostart": "Failed to load auto-start.",
+      "save_autostart": "Failed to save auto-start.",
+      "restart_policy": "Failed to update restart policy.",
+      "auto_group": "Error auto-grouping.",
+      "refresh_containers": "Failed to refresh containers.",
+      "docker_communication": "Error communicating with Docker.",
+      "download_failed": "Failed to download file.",
+      "create_container": "Failed to create container.",
+      "run_command": "Failed to run command."
+    },
+    "dockerfile": {
+      "load_failed": "Failed to load Dockerfile.",
+      "modal_title_prefix": "Edit Dockerfile",
+      "confirm_save_restart": "Save & restart",
+      "save_failed": "Failed to save Dockerfile.",
+      "saved_restarted": "Dockerfile saved and container restarted.",
+      "edit_failed": "Failed to edit Dockerfile."
+    },
+    "containers": {
+      "edit_dockerfile": "Edit Dockerfile",
+      "create_dockerfile": {
+        "title": "Create container via Dockerfile",
+        "confirm": "Build & Run",
+        "name_placeholder": "Container name (used as tag and --name)",
+        "command_placeholder": "Command (optional)",
+        "env_placeholder": ".env file (optional)",
+        "dockerfile_placeholder": "Dockerfile"
+      },
+      "create_cli": {
+        "title": "Create container via CLI",
+        "placeholder": "docker run -d --name myapp -p 8080:80 image:tag"
+      }
     },
     "alias": {
       "label": "Alias (optional)",
       "icon_label": "Icon (URL) e.g., http://icons.casaos.local/...",
       "save": "Save",
       "cancel": "Cancel",
-      "rename": "Edit alias"
+      "rename": "Edit alias",
+      "rename_icon_title": "Edit alias and icon"
     },
     "upload": {
       "button": "📤 Upload",

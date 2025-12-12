@@ -547,6 +547,7 @@ textarea:focus {
   row-gap: 0.35rem;
   margin-bottom: 0.75rem;
   padding-bottom: 0.75rem;
+  padding-right: 2.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-wrap: wrap;
   cursor: pointer;
@@ -625,8 +626,10 @@ textarea:focus {
   cursor: pointer;
   position: absolute;
   right: 0.6rem;
-  bottom: 0.6rem;
+  top: 0.6rem;
+  bottom: auto;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 2;
 }
 
 .group-card-glass-actions {
