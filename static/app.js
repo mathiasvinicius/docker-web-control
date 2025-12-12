@@ -8,11 +8,14 @@ const state = {
   filter: "",
   runningOnly: false,
   organizeMode: false,
+  bingBackgroundEnabled: false,
   autostart: { groups: [], containers: [] },
   pinnedEmptyGroups: [],
 };
 
 const PINNED_EMPTY_GROUPS_KEY = "dockerControlPinnedEmptyGroups";
+const BING_BG_ENABLED_KEY = "dockerControlBingBackgroundEnabled";
+const BING_BG_CACHE_KEY = "dockerControlBingWallpaperCache";
 
 function loadPinnedEmptyGroups() {
   try {
@@ -66,6 +69,58 @@ function reconcilePinnedEmptyGroups() {
   }
 }
 
+function loadBingBackgroundEnabled() {
+  try {
+    return localStorage.getItem(BING_BG_ENABLED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function persistBingBackgroundEnabled() {
+  try {
+    localStorage.setItem(BING_BG_ENABLED_KEY, state.bingBackgroundEnabled ? "1" : "0");
+  } catch {
+    // ignore
+  }
+}
+
+function loadBingWallpaperCache() {
+  try {
+    const raw = localStorage.getItem(BING_BG_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    if (typeof parsed.url !== "string" || !parsed.url.trim()) return null;
+    return {
+      url: parsed.url,
+      title: typeof parsed.title === "string" ? parsed.title : "",
+      copyright: typeof parsed.copyright === "string" ? parsed.copyright : "",
+      fetchedAt: typeof parsed.fetchedAt === "number" ? parsed.fetchedAt : 0,
+      mkt: typeof parsed.mkt === "string" ? parsed.mkt : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistBingWallpaperCache(payload) {
+  try {
+    localStorage.setItem(
+      BING_BG_CACHE_KEY,
+      JSON.stringify({
+        url: payload?.url || "",
+        title: payload?.title || "",
+        copyright: payload?.copyright || "",
+        fetchedAt: Date.now(),
+        mkt: payload?.mkt || "",
+      })
+    );
+  } catch {
+    // ignore
+  }
+}
+
 const dom = {
   filterInput: document.getElementById("filter-input"),
   runningOnly: document.getElementById("running-only"),
@@ -81,6 +136,8 @@ const dom = {
   newFromDockerfile: document.getElementById("new-from-dockerfile"),
   newFromCommand: document.getElementById("new-from-command"),
   organizeToggle: document.getElementById("toggle-organize"),
+  bingToggle: document.getElementById("toggle-bing-bg"),
+  bingWallpaper: document.getElementById("bing-wallpaper"),
 };
 
 let toastTimer;
@@ -93,9 +150,16 @@ const defaultTranslations = {
 async function init() {
   await loadTranslations();
   state.pinnedEmptyGroups = loadPinnedEmptyGroups();
+  state.bingBackgroundEnabled = loadBingBackgroundEnabled();
+  updateBingBackgroundUI();
+  applyBingWallpaperFromCache();
   updateOrganizeModeUI();
   attachEvents();
   await loadAll();
+
+  if (state.bingBackgroundEnabled) {
+    refreshBingWallpaper({ silent: true }).catch(() => null);
+  }
 }
 
 function attachEvents() {
@@ -118,6 +182,9 @@ function attachEvents() {
       state.currentLang = dom.langSelect.value;
       applyStaticTranslations();
       render();
+      if (state.bingBackgroundEnabled) {
+        refreshBingWallpaper({ silent: true }).catch(() => null);
+      }
     });
   }
 
@@ -137,6 +204,14 @@ function attachEvents() {
 
   if (dom.organizeToggle) {
     dom.organizeToggle.addEventListener("click", () => setOrganizeMode(!state.organizeMode));
+  }
+
+  if (dom.bingToggle) {
+    dom.bingToggle.addEventListener("click", () => {
+      setBingBackgroundEnabled(!state.bingBackgroundEnabled).catch((error) =>
+        showToast(error.message || "Erro ao alternar fundo.", true)
+      );
+    });
   }
 
   if (dom.cardsContainer) {
@@ -182,6 +257,93 @@ function setOrganizeMode(enabled) {
   render();
 
   showToast(state.organizeMode ? "Modo organizar ativo: arraste os cards." : "Modo organizar desativado.");
+}
+
+function updateBingBackgroundUI() {
+  if (!dom.bingToggle) return;
+  dom.bingToggle.classList.toggle("active", state.bingBackgroundEnabled);
+  dom.bingToggle.textContent = state.bingBackgroundEnabled ? "🌄 Fundo Bing ✓" : "🌄 Fundo Bing";
+  dom.bingToggle.title = state.bingBackgroundEnabled
+    ? "Clique para desativar fundo do Bing"
+    : "Clique para ativar fundo do Bing";
+}
+
+function applyBingWallpaper(payload) {
+  if (!dom.bingWallpaper) return;
+  const url = String(payload?.url || "").trim();
+  if (!url) return;
+  dom.bingWallpaper.style.backgroundImage = `url(\"${url}\")`;
+  dom.bingWallpaper.classList.add("visible");
+  const credit = String(payload?.copyright || payload?.title || "").trim();
+  if (credit) dom.bingWallpaper.title = credit;
+}
+
+function clearBingWallpaper() {
+  if (!dom.bingWallpaper) return;
+  dom.bingWallpaper.classList.remove("visible");
+  dom.bingWallpaper.style.backgroundImage = "";
+  dom.bingWallpaper.title = "";
+}
+
+function applyBingWallpaperFromCache() {
+  if (!state.bingBackgroundEnabled) return;
+  const cached = loadBingWallpaperCache();
+  if (!cached) return;
+  applyBingWallpaper(cached);
+}
+
+function getBingMarket() {
+  if (state.currentLang === "pt-BR") return "pt-BR";
+  return "en-US";
+}
+
+async function fetchBingWallpaper() {
+  const market = getBingMarket();
+  const response = await fetch(`/api/bing-wallpaper?mkt=${encodeURIComponent(market)}`);
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.details || data.error || "Falha ao obter wallpaper do Bing.");
+  }
+  if (!data?.url) throw new Error("Wallpaper inválido.");
+  return data;
+}
+
+async function refreshBingWallpaper({ silent } = {}) {
+  if (!state.bingBackgroundEnabled) return;
+  const payload = await fetchBingWallpaper();
+  applyBingWallpaper(payload);
+  persistBingWallpaperCache(payload);
+  if (!silent) showToast("Fundo do Bing atualizado.");
+}
+
+async function setBingBackgroundEnabled(enabled) {
+  state.bingBackgroundEnabled = Boolean(enabled);
+  persistBingBackgroundEnabled();
+  updateBingBackgroundUI();
+
+  if (!state.bingBackgroundEnabled) {
+    clearBingWallpaper();
+    showToast("Fundo do Bing desativado.");
+    return;
+  }
+
+  applyBingWallpaperFromCache();
+  const hasCachedWallpaper = Boolean(dom.bingWallpaper?.style?.backgroundImage);
+
+  try {
+    await refreshBingWallpaper({ silent: true });
+    showToast("Fundo do Bing ativado.");
+  } catch (error) {
+    if (hasCachedWallpaper) {
+      showToast(error.message || "Falha ao atualizar fundo do Bing.", true);
+      return;
+    }
+    state.bingBackgroundEnabled = false;
+    persistBingBackgroundEnabled();
+    updateBingBackgroundUI();
+    clearBingWallpaper();
+    throw error;
+  }
 }
 
 function ensureGroupAliasObject(groupName) {

@@ -13,6 +13,9 @@ import os
 import shlex
 import subprocess
 import threading
+import time
+import urllib.error
+import urllib.request
 import uuid
 import hashlib
 import io
@@ -68,6 +71,76 @@ AUTOSTART_FILE = BASE_DIR / "data" / "autostart.json"
 DOCKERFILES_DIR = BASE_DIR / "dockerfiles"
 DOCKER_TIMEOUT = int(os.environ.get("DOCKER_TIMEOUT", "30"))
 MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB max file size
+BING_WALLPAPER_TTL_SECONDS = 6 * 60 * 60
+BING_WALLPAPER_CACHE_LOCK = threading.Lock()
+BING_WALLPAPER_CACHE: Dict[str, Dict[str, object]] = {}
+
+
+def _sanitize_bing_market(value: str) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return "en-US"
+    if re.fullmatch(r"[a-z]{2}-[A-Z]{2}", raw):
+        return raw
+    return "en-US"
+
+
+def _fetch_bing_wallpaper(market: str) -> Dict[str, str]:
+    market = _sanitize_bing_market(market)
+    api_url = f"https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt={market}"
+    request = urllib.request.Request(
+        api_url,
+        headers={
+            "User-Agent": "DockerWebControl/2.0 (+https://github.com/mathiasvinicius/docker-web-control)",
+            "Accept": "application/json",
+        },
+        method="GET",
+    )
+    with urllib.request.urlopen(request, timeout=10) as response:
+        body = response.read().decode("utf-8", errors="replace")
+    data = json.loads(body)
+    images = data.get("images") or []
+    if not images:
+        raise ValueError("Bing did not return images.")
+    image = images[0] if isinstance(images[0], dict) else {}
+    relative = str(image.get("url") or "").strip()
+    if not relative:
+        raise ValueError("Bing image URL is missing.")
+    full_url = relative if relative.startswith("http") else f"https://www.bing.com{relative}"
+    return {
+        "provider": "bing",
+        "mkt": market,
+        "url": full_url,
+        "title": str(image.get("title") or "").strip(),
+        "copyright": str(image.get("copyright") or "").strip(),
+    }
+
+
+def get_bing_wallpaper(market: str) -> Dict[str, str]:
+    market = _sanitize_bing_market(market)
+    now = time.time()
+
+    with BING_WALLPAPER_CACHE_LOCK:
+        cached = BING_WALLPAPER_CACHE.get(market)
+        if cached:
+            fetched_at = float(cached.get("fetched_at") or 0)
+            payload = cached.get("payload")
+            if isinstance(payload, dict) and now - fetched_at < BING_WALLPAPER_TTL_SECONDS:
+                return payload  # type: ignore[return-value]
+
+    try:
+        payload = _fetch_bing_wallpaper(market)
+    except Exception:
+        with BING_WALLPAPER_CACHE_LOCK:
+            cached = BING_WALLPAPER_CACHE.get(market)
+            payload = cached.get("payload") if cached else None
+            if isinstance(payload, dict):
+                return payload  # type: ignore[return-value]
+        raise
+
+    with BING_WALLPAPER_CACHE_LOCK:
+        BING_WALLPAPER_CACHE[market] = {"fetched_at": now, "payload": payload}
+    return payload
 
 
 def _read_file_bytes(path: Path) -> bytes:
@@ -653,6 +726,9 @@ class DockerControlHandler(BaseHTTPRequestHandler):
         if route == "/api/autostart":
             self._handle_get_autostart()
             return
+        if route == "/api/bing-wallpaper":
+            self._handle_get_bing_wallpaper(parsed)
+            return
         if route.startswith("/api/containers/") and route.endswith("/export"):
             self._handle_export_container(route)
             return
@@ -714,6 +790,19 @@ class DockerControlHandler(BaseHTTPRequestHandler):
         groups = self.server.group_store.read()
         aliases = self.server.alias_store.read()
         self._send_json({"groups": groups, "aliases": aliases})
+
+    def _handle_get_bing_wallpaper(self, parsed) -> None:
+        qs = parse_qs(parsed.query)
+        market = qs.get("mkt", ["en-US"])[0]
+        try:
+            payload = get_bing_wallpaper(market)
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            self._send_json({"error": "Falha ao obter wallpaper do Bing.", "details": str(error)}, code=502)
+            return
+        except Exception as error:
+            self._send_json({"error": "Falha ao obter wallpaper do Bing.", "details": str(error)}, code=502)
+            return
+        self._send_json(payload)
 
     def _handle_export_container(self, route: str) -> None:
         remainder = route[len("/api/containers/") :]

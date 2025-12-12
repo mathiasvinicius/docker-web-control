@@ -6,11 +6,12 @@
     <title>Docker Web Control</title>
     <link rel="stylesheet" href="/static/styles.css" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>🐳</text></svg>">
-  </head>
-  <body>
-    <div class="app-shell">
-      <header class="topbar">
-        <div class="brand-inline">
+	  </head>
+	  <body>
+	    <div id="bing-wallpaper" class="bing-wallpaper" aria-hidden="true"></div>
+	    <div class="app-shell">
+	      <header class="topbar">
+	        <div class="brand-inline">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M13.5 3h-3v3h3V3zm0 4h-3v3h3V7zm0 4h-3v3h3v-3zm4-8h-3v3h3V3zm0 4h-3v3h3V7zm0 4h-3v3h3v-3zm-8-8h-3v3h3V3zm0 4h-3v3h3V7zm-4-4h-3v3h3V3zm0 4h-3v3h3V7z" fill="currentColor"/>
             <path d="M23.5 11.5c0-.8-.3-1.5-.8-2-.5-.5-1.2-.8-2-.8H19v-2c0-.6-.4-1-1-1h-6v3h5v2h-7.5c-.3 0-.5.2-.5.5v4c0 .3.2.5.5.5h3.4c.3 1.2 1.4 2 2.6 2s2.3-.8 2.6-2h1.4c1.1 0 2-.9 2-2v-2.2z" fill="currentColor"/>
@@ -19,17 +20,25 @@
             <h1 id="app-title">Docker Web Control</h1>
             <p id="app-subtitle">Visualize, agrupe e automatize.</p>
           </div>
-        </div>
-        <div class="topbar-actions">
-          <label class="language-select">
-            <span id="nav-language-label">Idioma</span>
-            <select id="lang-select">
-              <option value="pt-BR">Português (BR)</option>
-              <option value="en">English</option>
-            </select>
-          </label>
-        </div>
-      </header>
+	        </div>
+	        <div class="topbar-actions">
+	          <button
+	            id="toggle-bing-bg"
+	            class="ghost small"
+	            title="Ativar/desativar fundo do Bing"
+	            type="button"
+	          >
+	            🌄 Fundo Bing
+	          </button>
+	          <label class="language-select">
+	            <span id="nav-language-label">Idioma</span>
+	            <select id="lang-select">
+	              <option value="pt-BR">Português (BR)</option>
+	              <option value="en">English</option>
+	            </select>
+	          </label>
+	        </div>
+	      </header>
       <main class="page-layout">
         <section class="panel containers-panel">
           <div class="panel-header">

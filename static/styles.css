@@ -21,6 +21,31 @@ body {
   font-size: 0.9rem;
 }
 
+.bing-wallpaper {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.bing-wallpaper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.14), transparent 35%),
+    radial-gradient(circle at 80% 0%, rgba(16, 185, 129, 0.14), transparent 35%),
+    linear-gradient(180deg, rgba(12, 24, 35, 0.55), rgba(12, 24, 35, 0.9));
+}
+
+.bing-wallpaper.visible {
+  opacity: 1;
+}
+
 button {
   border: none;
   border-radius: 6px;

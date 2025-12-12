@@ -15,6 +15,7 @@
 - 🐳 **Docker Container Management**: Start, stop, restart and delete containers
 - 🎴 **Visual Cards**: Group cards + standalone container cards
 - ↕ **Card Ordering**: Organize cards via drag-and-drop (saved like aliases/icons)
+- 🌄 **Optional Bing Background**: Enable Bing daily wallpaper as the page background
 - 📦 **Group Management**: Create groups, add/remove containers, batch actions
 - 🚀 **Auto-start Configuration**: Set containers or groups to start automatically (updates restart policy)
 - 🏷️ **Aliases & Icons**: Custom names and icons for containers and groups
