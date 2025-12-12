@@ -9,6 +9,8 @@ const state = {
   runningOnly: false,
   organizeMode: false,
   bingBackgroundEnabled: false,
+  bingBackgroundTransparency: 25,
+  bingBackgroundPanelOpen: false,
   autostart: { groups: [], containers: [] },
   pinnedEmptyGroups: [],
 };
@@ -16,6 +18,7 @@ const state = {
 const PINNED_EMPTY_GROUPS_KEY = "dockerControlPinnedEmptyGroups";
 const BING_BG_ENABLED_KEY = "dockerControlBingBackgroundEnabled";
 const BING_BG_CACHE_KEY = "dockerControlBingWallpaperCache";
+const BING_BG_TRANSPARENCY_KEY = "dockerControlBingBackgroundTransparency";
 
 function loadPinnedEmptyGroups() {
   try {
@@ -85,6 +88,30 @@ function persistBingBackgroundEnabled() {
   }
 }
 
+function loadBingBackgroundTransparency() {
+  try {
+    const raw = localStorage.getItem(BING_BG_TRANSPARENCY_KEY);
+    if (!raw) return 25;
+    const num = Number(raw);
+    if (!Number.isFinite(num)) return 25;
+    return clamp(Math.trunc(num), 0, 90);
+  } catch {
+    return 25;
+  }
+}
+
+function persistBingBackgroundTransparency() {
+  try {
+    localStorage.setItem(BING_BG_TRANSPARENCY_KEY, String(state.bingBackgroundTransparency));
+  } catch {
+    // ignore
+  }
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function loadBingWallpaperCache() {
   try {
     const raw = localStorage.getItem(BING_BG_CACHE_KEY);
@@ -138,6 +165,11 @@ const dom = {
   organizeToggle: document.getElementById("toggle-organize"),
   bingToggle: document.getElementById("toggle-bing-bg"),
   bingWallpaper: document.getElementById("bing-wallpaper"),
+  bingControl: document.getElementById("bing-bg-control"),
+  bingPanel: document.getElementById("bing-bg-panel"),
+  bingEnabled: document.getElementById("bing-bg-enabled"),
+  bingTransparency: document.getElementById("bing-bg-transparency"),
+  bingTransparencyValue: document.getElementById("bing-bg-transparency-value"),
 };
 
 let toastTimer;
@@ -151,6 +183,8 @@ async function init() {
   await loadTranslations();
   state.pinnedEmptyGroups = loadPinnedEmptyGroups();
   state.bingBackgroundEnabled = loadBingBackgroundEnabled();
+  state.bingBackgroundTransparency = loadBingBackgroundTransparency();
+  applyBingBackgroundOpacity();
   updateBingBackgroundUI();
   applyBingWallpaperFromCache();
   updateOrganizeModeUI();
@@ -207,12 +241,39 @@ function attachEvents() {
   }
 
   if (dom.bingToggle) {
-    dom.bingToggle.addEventListener("click", () => {
-      setBingBackgroundEnabled(!state.bingBackgroundEnabled).catch((error) =>
+    dom.bingToggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      setBingBackgroundPanelOpen(!state.bingBackgroundPanelOpen);
+    });
+  }
+
+  if (dom.bingEnabled) {
+    dom.bingEnabled.addEventListener("change", () => {
+      setBingBackgroundEnabled(Boolean(dom.bingEnabled.checked)).catch((error) =>
         showToast(error.message || "Erro ao alternar fundo.", true)
       );
     });
   }
+
+  if (dom.bingTransparency) {
+    dom.bingTransparency.addEventListener("input", () => {
+      const value = clamp(Math.trunc(Number(dom.bingTransparency.value)), 0, 90);
+      setBingBackgroundTransparency(value);
+    });
+  }
+
+  document.addEventListener("click", (event) => {
+    if (!state.bingBackgroundPanelOpen) return;
+    const inside = event.target?.closest?.("#bing-bg-control");
+    if (inside) return;
+    setBingBackgroundPanelOpen(false);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (!state.bingBackgroundPanelOpen) return;
+    setBingBackgroundPanelOpen(false);
+  });
 
   if (dom.cardsContainer) {
     dom.cardsContainer.addEventListener("dragover", handleCardsContainerDragOver);
@@ -266,6 +327,27 @@ function updateBingBackgroundUI() {
   dom.bingToggle.title = state.bingBackgroundEnabled
     ? "Clique para desativar fundo do Bing"
     : "Clique para ativar fundo do Bing";
+
+  if (dom.bingEnabled) dom.bingEnabled.checked = state.bingBackgroundEnabled;
+  if (dom.bingTransparency) dom.bingTransparency.value = String(state.bingBackgroundTransparency);
+  if (dom.bingTransparencyValue) dom.bingTransparencyValue.textContent = `${state.bingBackgroundTransparency}%`;
+}
+
+function applyBingBackgroundOpacity() {
+  const opacity = 1 - clamp(state.bingBackgroundTransparency, 0, 90) / 100;
+  document.documentElement.style.setProperty("--bing-bg-opacity", String(opacity));
+}
+
+function setBingBackgroundPanelOpen(open) {
+  state.bingBackgroundPanelOpen = Boolean(open);
+  if (dom.bingPanel) dom.bingPanel.hidden = !state.bingBackgroundPanelOpen;
+}
+
+function setBingBackgroundTransparency(value) {
+  state.bingBackgroundTransparency = clamp(Math.trunc(Number(value)), 0, 90);
+  persistBingBackgroundTransparency();
+  applyBingBackgroundOpacity();
+  updateBingBackgroundUI();
 }
 
 function applyBingWallpaper(payload) {
@@ -323,6 +405,7 @@ async function setBingBackgroundEnabled(enabled) {
 
   if (!state.bingBackgroundEnabled) {
     clearBingWallpaper();
+    setBingBackgroundPanelOpen(false);
     showToast("Fundo do Bing desativado.");
     return;
   }

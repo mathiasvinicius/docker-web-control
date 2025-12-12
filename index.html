@@ -22,14 +22,27 @@
           </div>
 	        </div>
 	        <div class="topbar-actions">
-	          <button
-	            id="toggle-bing-bg"
-	            class="ghost small"
-	            title="Ativar/desativar fundo do Bing"
-	            type="button"
-	          >
-	            🌄 Fundo Bing
-	          </button>
+	          <div class="bing-bg-control" id="bing-bg-control">
+	            <button
+	              id="toggle-bing-bg"
+	              class="ghost small"
+	              title="Configurar fundo do Bing"
+	              type="button"
+	            >
+	              🌄 Fundo Bing
+	            </button>
+	            <div id="bing-bg-panel" class="bing-bg-panel" hidden>
+	              <label class="bing-bg-row">
+	                <input type="checkbox" id="bing-bg-enabled" />
+	                <span>Ativar fundo</span>
+	              </label>
+	              <div class="bing-bg-row">
+	                <span>Transparência</span>
+	                <input type="range" id="bing-bg-transparency" min="0" max="90" step="5" />
+	                <span id="bing-bg-transparency-value">—</span>
+	              </div>
+	            </div>
+	          </div>
 	          <label class="language-select">
 	            <span id="nav-language-label">Idioma</span>
 	            <select id="lang-select">
