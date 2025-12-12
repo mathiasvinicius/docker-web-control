@@ -806,6 +806,14 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
 
   const quickActions = document.createElement("div");
   quickActions.className = "card-quick-actions";
+
+  const addQuickBtn = createButton("➕", "ghost small", (e) => {
+    e.stopPropagation();
+    openAddContainersToGroup(groupName);
+  });
+  addQuickBtn.title = "Adicionar container";
+  quickActions.appendChild(addQuickBtn);
+
   getGroupActions(groupName)
     .filter((a) => a !== "delete")
     .forEach((action) => {
@@ -823,6 +831,13 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
   });
   exportBtn.title = "Exportar";
   quickActions.appendChild(exportBtn);
+
+  const deleteQuickBtn = createButton("🗑", "ghost small danger", (e) => {
+    e.stopPropagation();
+    deleteGroup(groupName);
+  });
+  deleteQuickBtn.title = "Excluir grupo";
+  quickActions.appendChild(deleteQuickBtn);
 
   const collapsible = document.createElement("div");
   collapsible.className = "card-collapsible";
@@ -953,11 +968,11 @@ function createContainerItem(container, groupName) {
   actions.appendChild(editBtn);
 
   if (groupName) {
-    const removeBtn = createButton("⨯", "ghost small", (e) => {
+    const removeBtn = createButton("⨯ Grupo", "ghost small danger", (e) => {
       e.stopPropagation();
       removeFromGroup(groupName, container.id);
     });
-    removeBtn.title = `Remover de "${groupLabel(groupName)}"`;
+    removeBtn.title = `Remover do grupo "${groupLabel(groupName)}"`;
     actions.appendChild(removeBtn);
   }
 
@@ -1579,6 +1594,7 @@ function openNewGroup() {
 
       state.groups[name] = [];
       await persistGroups("Grupo criado.");
+      setTimeout(() => openAddContainersToGroup(name), 0);
     },
   });
 
