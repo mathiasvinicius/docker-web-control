@@ -9,7 +9,7 @@ const state = {
   runningOnly: false,
   organizeMode: false,
   bingBackgroundEnabled: false,
-  bingBackgroundTransparency: 25,
+  bingBackgroundTransparency: 15,
   bingBackgroundPanelOpen: false,
   autostart: { groups: [], containers: [] },
   pinnedEmptyGroups: [],
@@ -91,12 +91,12 @@ function persistBingBackgroundEnabled() {
 function loadBingBackgroundTransparency() {
   try {
     const raw = localStorage.getItem(BING_BG_TRANSPARENCY_KEY);
-    if (!raw) return 25;
+    if (!raw) return 15;
     const num = Number(raw);
-    if (!Number.isFinite(num)) return 25;
+    if (!Number.isFinite(num)) return 15;
     return clamp(Math.trunc(num), 0, 90);
   } catch {
-    return 25;
+    return 15;
   }
 }
 
@@ -184,7 +184,7 @@ async function init() {
   state.pinnedEmptyGroups = loadPinnedEmptyGroups();
   state.bingBackgroundEnabled = loadBingBackgroundEnabled();
   state.bingBackgroundTransparency = loadBingBackgroundTransparency();
-  applyBingBackgroundOpacity();
+  applyContainersPanelOpacity();
   updateBingBackgroundUI();
   applyBingWallpaperFromCache();
   updateOrganizeModeUI();
@@ -333,9 +333,9 @@ function updateBingBackgroundUI() {
   if (dom.bingTransparencyValue) dom.bingTransparencyValue.textContent = `${state.bingBackgroundTransparency}%`;
 }
 
-function applyBingBackgroundOpacity() {
+function applyContainersPanelOpacity() {
   const opacity = 1 - clamp(state.bingBackgroundTransparency, 0, 90) / 100;
-  document.documentElement.style.setProperty("--bing-bg-opacity", String(opacity));
+  document.documentElement.style.setProperty("--containers-panel-opacity", String(opacity));
 }
 
 function setBingBackgroundPanelOpen(open) {
@@ -346,7 +346,7 @@ function setBingBackgroundPanelOpen(open) {
 function setBingBackgroundTransparency(value) {
   state.bingBackgroundTransparency = clamp(Math.trunc(Number(value)), 0, 90);
   persistBingBackgroundTransparency();
-  applyBingBackgroundOpacity();
+  applyContainersPanelOpacity();
   updateBingBackgroundUI();
 }
 
