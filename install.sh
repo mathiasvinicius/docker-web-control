@@ -238,17 +238,44 @@ prepare_system_installation() {
     echo "✅ Files copied to $INSTALL_DIR"
 }
 
+ensure_runtime_dirs_and_files() {
+    mkdir -p "$INSTALL_DIR/data"
+    mkdir -p "$INSTALL_DIR/icons"
+    mkdir -p "$INSTALL_DIR/dockerfiles"
+
+    # Create default runtime config files if missing (never committed to git)
+    [ -f "$INSTALL_DIR/data/groups.json" ] || echo "{}" > "$INSTALL_DIR/data/groups.json"
+    [ -f "$INSTALL_DIR/data/group_aliases.json" ] || echo "{}" > "$INSTALL_DIR/data/group_aliases.json"
+    [ -f "$INSTALL_DIR/data/container_aliases.json" ] || echo "{}" > "$INSTALL_DIR/data/container_aliases.json"
+    [ -f "$INSTALL_DIR/data/autostart.json" ] || echo '{"groups": [], "containers": []}' > "$INSTALL_DIR/data/autostart.json"
+}
+
+apply_system_permissions() {
+    chown -R root:root "$INSTALL_DIR"
+
+    # Default safe permissions: readable code, private runtime data
+    find "$INSTALL_DIR" -type d -exec chmod 755 {} + 2>/dev/null || true
+    find "$INSTALL_DIR" -type f -exec chmod 644 {} + 2>/dev/null || true
+
+    chmod 755 "$INSTALL_DIR"/server.py "$INSTALL_DIR"/autostart.py "$INSTALL_DIR"/restart.sh 2>/dev/null || true
+
+    # Private runtime directories / config
+    chmod 700 "$INSTALL_DIR/data" "$INSTALL_DIR/dockerfiles" 2>/dev/null || true
+    chmod 600 "$INSTALL_DIR/data"/*.json 2>/dev/null || true
+
+    # .env may contain secrets
+    chmod 600 "$INSTALL_DIR/.env" 2>/dev/null || true
+    chmod 644 "$INSTALL_DIR/.env.example" 2>/dev/null || true
+}
+
 setup_directories() {
     echo "Setting up directories..."
 
-    mkdir -p "$INSTALL_DIR/data"
-    mkdir -p "$INSTALL_DIR/icons"
+    ensure_runtime_dirs_and_files
 
     # Set permissions
     if [ "$SYSTEM_MODE" = true ]; then
-        chown -R root:root "$INSTALL_DIR"
-        chmod -R 755 "$INSTALL_DIR"
-        chmod 755 "$INSTALL_DIR"/server.py "$INSTALL_DIR"/autostart.py "$INSTALL_DIR"/restart.sh 2>/dev/null || true
+        apply_system_permissions
     else
         chmod +x "$INSTALL_DIR"/server.py "$INSTALL_DIR"/autostart.py "$INSTALL_DIR"/restart.sh 2>/dev/null || true
     fi
@@ -278,6 +305,7 @@ setup_env_file() {
     if [ ! -f "$INSTALL_DIR/.env" ]; then
         echo "📝 Creating .env file..."
         cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"
+        chmod 600 "$INSTALL_DIR/.env" 2>/dev/null || true
         echo "✅ Created .env file (you can edit it to customize settings)"
     else
         echo "✅ .env file already exists"
@@ -532,7 +560,12 @@ update_installation() {
     fi
 
     # Set permissions
-    chmod +x "$INSTALL_DIR"/server.py "$INSTALL_DIR"/autostart.py "$INSTALL_DIR"/restart.sh 2>/dev/null || true
+    ensure_runtime_dirs_and_files
+    if [ "$EUID" -eq 0 ] && { [ "$INSTALL_DIR" = "$DEFAULT_SYSTEM_INSTALL_DIR" ] || [ "$INSTALL_DIR" != "$SCRIPT_DIR" ]; }; then
+        apply_system_permissions
+    else
+        chmod +x "$INSTALL_DIR"/server.py "$INSTALL_DIR"/autostart.py "$INSTALL_DIR"/restart.sh 2>/dev/null || true
+    fi
 
     echo "✅ Files updated"
 

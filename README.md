@@ -245,6 +245,21 @@ docker-web-control/
 └── README.md                    # This file
 ```
 
+## 🔒 Runtime Data (Not Committed)
+
+This project stores user/runtime state locally and it is intentionally excluded from git (public repo safety):
+
+- `data/` (groups, aliases, card order, autostart settings)
+  - `data/groups.json`
+  - `data/group_aliases.json`
+  - `data/container_aliases.json`
+  - `data/autostart.json`
+- `icons/` (uploaded icon files)
+- `dockerfiles/` (generated/edited Dockerfiles and optional `.env` files)
+- `.env` (local environment configuration)
+
+These files/folders are created automatically on first run (and by the installer) and should never be pushed.
+
 ## 🔒 Security
 
 - Commands are executed with `shlex.quote()` protection against shell injection
