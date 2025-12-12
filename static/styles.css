@@ -424,6 +424,10 @@ textarea:focus {
   position: relative;
 }
 
+.group-card-glass.pinned-empty-group {
+  grid-column: 1 / -1;
+}
+
 .group-card-glass:hover {
   transform: translateY(-6px);
   box-shadow: 0 12px 40px rgba(34, 211, 238, 0.3);

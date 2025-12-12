@@ -8,7 +8,62 @@ const state = {
   filter: "",
   runningOnly: false,
   autostart: { groups: [], containers: [] },
+  pinnedEmptyGroups: [],
 };
+
+const PINNED_EMPTY_GROUPS_KEY = "dockerControlPinnedEmptyGroups";
+
+function loadPinnedEmptyGroups() {
+  try {
+    const raw = localStorage.getItem(PINNED_EMPTY_GROUPS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((name) => typeof name === "string" && name.trim()) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistPinnedEmptyGroups() {
+  try {
+    localStorage.setItem(PINNED_EMPTY_GROUPS_KEY, JSON.stringify(state.pinnedEmptyGroups || []));
+  } catch {
+    // ignore
+  }
+}
+
+function pinEmptyGroup(groupName) {
+  if (!groupName) return;
+  const name = String(groupName).trim();
+  if (!name) return;
+  if (!state.pinnedEmptyGroups.includes(name)) {
+    state.pinnedEmptyGroups = [...state.pinnedEmptyGroups, name];
+    persistPinnedEmptyGroups();
+  }
+}
+
+function unpinGroup(groupName) {
+  if (!groupName) return;
+  const name = String(groupName).trim();
+  if (!name) return;
+  const next = (state.pinnedEmptyGroups || []).filter((g) => g !== name);
+  if (next.length !== (state.pinnedEmptyGroups || []).length) {
+    state.pinnedEmptyGroups = next;
+    persistPinnedEmptyGroups();
+  }
+}
+
+function reconcilePinnedEmptyGroups() {
+  const names = new Set(Object.keys(state.groups || {}));
+  const next = (state.pinnedEmptyGroups || []).filter((name) => {
+    if (!names.has(name)) return false;
+    return (state.groups?.[name] || []).length === 0;
+  });
+  if (next.length !== (state.pinnedEmptyGroups || []).length) {
+    state.pinnedEmptyGroups = next;
+    persistPinnedEmptyGroups();
+  }
+}
 
 const dom = {
   filterInput: document.getElementById("filter-input"),
@@ -34,6 +89,7 @@ const defaultTranslations = {
 
 async function init() {
   await loadTranslations();
+  state.pinnedEmptyGroups = loadPinnedEmptyGroups();
   attachEvents();
   await loadAll();
 }
@@ -87,6 +143,7 @@ async function loadAll() {
     state.groups = groupsResponse.groups;
     state.groupAliases = groupsResponse.aliases || {};
     state.autostart = autostart;
+    reconcilePinnedEmptyGroups();
 
     applyAutoGrouping(true);
     render();
@@ -491,17 +548,33 @@ function renderCards() {
 
   dom.cardsContainer.innerHTML = "";
 
+  reconcilePinnedEmptyGroups();
+
   const visibleContainers = getVisibleContainers(true);
   const visibleContainerIds = new Set(visibleContainers.map((c) => c.id));
 
   const hasTerm = Boolean(state.filter);
   const term = state.filter;
 
-  const groupNames = Object.keys(state.groups || {}).sort((a, b) =>
-    groupLabel(a).localeCompare(groupLabel(b), undefined, { sensitivity: "base" })
+  const pinnedEmptyGroups = (state.pinnedEmptyGroups || []).filter(
+    (name) => (state.groups?.[name] || []).length === 0
   );
+  const pinnedSet = new Set(pinnedEmptyGroups);
+  const groupNames = Object.keys(state.groups || {})
+    .filter((name) => !pinnedSet.has(name))
+    .sort((a, b) => groupLabel(a).localeCompare(groupLabel(b), undefined, { sensitivity: "base" }));
 
   let hasAnyCard = false;
+
+  // Grupos recém-criados e vazios: sempre no topo, ocupando a largura toda.
+  pinnedEmptyGroups.forEach((groupName) => {
+    const allGroupContainerIds = getGroupContainerIds(groupName);
+    const visibleGroupContainerIds = allGroupContainerIds.filter((id) => visibleContainerIds.has(id));
+    const groupCard = createGroupCard(groupName, visibleGroupContainerIds, allGroupContainerIds);
+    groupCard.classList.add("pinned-empty-group");
+    dom.cardsContainer.appendChild(groupCard);
+    hasAnyCard = true;
+  });
 
   groupNames.forEach((groupName) => {
     const allGroupContainerIds = getGroupContainerIds(groupName);
@@ -1593,6 +1666,7 @@ function openNewGroup() {
       if (dom.filterInput) dom.filterInput.value = "";
 
       state.groups[name] = [];
+      pinEmptyGroup(name);
       await persistGroups("Grupo criado.");
       setTimeout(() => openAddContainersToGroup(name), 0);
     },
@@ -1737,6 +1811,7 @@ async function deleteGroup(name) {
   if (!confirmGroupAction(name, "delete")) return;
   delete state.groups[name];
   delete state.groupAliases[name];
+  unpinGroup(name);
   try {
     await persistGroups("Grupo removido.");
   } catch (error) {
