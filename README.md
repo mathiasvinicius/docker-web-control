@@ -1,59 +1,53 @@
 # Docker Web Control
 
-**Web UI to manage Docker containers with visual cards, grouping, auto-start, aliases/icons, icon upload, filters, and start/stop/restart actions.**
+**Visualize, group and automate Docker containers — in a CasaOS‑inspired web UI.**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Docker](https://img.shields.io/badge/docker-required-blue)
 
+[🇧🇷 Português](#-português) · [🇺🇸 English](#-english)
+
 ## 📸 Screenshots
 
-![Docker Web Control - Main Interface](docs/images/main-interface.png)
+<details open>
+<summary><strong>🇧🇷 Português (PT‑BR)</strong></summary>
 
-## ✨ Features
+<img src="docs/images/main-interface_pt.png" alt="Docker Web Control - Interface principal (PT-BR)" width="900" />
 
-- 🐳 **Docker Container Management**: Start, stop, restart and delete containers
-- 🎴 **Visual Cards**: Group cards + standalone container cards
-- ↕ **Card Ordering**: Organize cards via drag-and-drop (saved like aliases/icons)
-- 🌄 **Optional Bing Background**: Enable Bing daily wallpaper as the page background
-- 📦 **Group Management**: Create groups, add/remove containers, batch actions
-- 🚀 **Auto-start Configuration**: Set containers or groups to start automatically (updates restart policy)
-- 🏷️ **Aliases & Icons**: Custom names and icons for containers and groups
-- 📤 **Icon Upload**: Upload custom icon images (PNG, JPG, SVG, etc.) with automatic storage
-- 🧱 **Create Containers**: Create via Dockerfile or via CLI command
-- 📦 **Export**: Export containers/groups as ZIP
-- 🔄 **Refresh**: Refresh button to update container status
-- 🔍 **Filters**: Search by name, image, or group; show only running containers
-- 🌐 **Multi-language**: Support for Portuguese (BR) and English
-- 🎨 **Modern UI**: Clean, responsive design with dark mode support
+</details>
 
-## 📋 Requirements
+<details>
+<summary><strong>🇺🇸 English</strong></summary>
 
-- **Docker**: Must be installed and running
-- **Python 3.10+**: For the backend server
-- **Docker permissions**: User must be in the `docker` group
-- **Dependencies**: No external Python dependencies required
+<img src="docs/images/main-interface_en.png" alt="Docker Web Control - Main interface (EN)" width="900" />
 
-## 🚀 Quick Start
+</details>
 
-Docker Web Control offers two installation modes to suit different needs:
+---
 
-### Option 1: Development/Custom Installation (Current Directory)
+## 🇧🇷 Português
 
-Perfect for development, testing, or custom locations:
+### ✨ Destaques
 
-```bash
-git clone https://github.com/mathiasvinicius/docker-web-control.git
-cd docker-web-control
-./install.sh
-./server.py  # or ./restart.sh
-```
+- 🎴 **Cards visuais**: containers individuais + grupos
+- ↕ **Organização por arrastar e soltar** (ordem persistida como apelidos/ícones)
+- 🧩 **Grupos**: criar, adicionar/remover containers, ações em lote
+- 🚀 **Auto-start** por container ou grupo (atualiza restart policy no Docker)
+- 🌄 **Fundo Bing opcional** + controle de transparência do painel
+- 🕒 **Widgets (CasaOS‑like)**: relógio + status do sistema (CPU/RAM) com Top 10 (containers ou processos)
+- 🏷️ **Apelidos & ícones** (com upload de ícones)
+- 🧱 **Criar containers** via Dockerfile ou comando CLI
+- 📦 **Exportar** container/grupo como ZIP
+- 🌐 **Idiomas**: PT‑BR e EN
 
-Access at: `http://localhost:8088`
+### ✅ Requisitos
 
-### Option 2: System-wide Installation (Recommended for Production)
+- Docker instalado e rodando
+- Python 3.10+
+- Permissão para executar `docker` (ex.: usuário no grupo `docker`)
 
-Install to `/opt/docker-web-control` with automatic systemd service setup:
+### 🚀 Instalação (recomendado: /opt + systemd)
 
 ```bash
 git clone https://github.com/mathiasvinicius/docker-web-control.git
@@ -61,17 +55,9 @@ cd docker-web-control
 sudo ./install.sh --system
 ```
 
-The system-wide installer will:
-- ✅ Copy all files to `/opt/docker-web-control`
-- ✅ Generate systemd service files with correct paths
-- ✅ Offer to install and enable services
-- ✅ Optionally start services immediately
+Acesse: `http://localhost:8088`
 
-Access at: `http://localhost:8088`
-
-## 🔄 Updating
-
-To update an existing installation to the latest version:
+### 🔄 Atualização
 
 ```bash
 cd docker-web-control
@@ -79,300 +65,141 @@ git pull
 sudo ./install.sh --update
 ```
 
-The update mode will:
-- ✅ Detect your installation automatically
-- ✅ Update all code files (server.py, static files, etc.)
-- ✅ Preserve your configuration (.env)
-- ✅ Preserve your data (groups, aliases, icons)
-- ✅ Restart the service if it's running
+### ⚙️ Configuração (`.env`)
 
-No need to reconfigure - just pull and update!
-
-## ⚙️ Configuration
-
-Edit the `.env` file to customize settings:
-
-`server.py` and `autostart.py` load `.env` automatically (without overriding existing environment variables).
+`server.py` e `autostart.py` carregam `.env` automaticamente (sem sobrescrever variáveis já definidas).
 
 ```bash
-# Server Configuration
-HOST=0.0.0.0      # Listen on all interfaces
-PORT=8088         # Web interface port
-
-# Docker Configuration
-DOCKER_TIMEOUT=30 # Timeout for Docker commands (seconds)
-
-# Debug Mode (optional)
-# DEBUG=1         # Enable debug logging
+HOST=0.0.0.0
+PORT=8088
+DOCKER_TIMEOUT=30
+# DEBUG=1
 ```
 
-## 🔧 Systemd Service Management
+### 🗂️ Dados locais (não sobem no git)
 
-### Automatic Installation (Recommended)
+Por ser um repositório público, os dados do usuário ficam fora do git:
 
-When using `sudo ./install.sh --system`, the installer offers interactive prompts to:
+- `data/` (grupos, apelidos/ícones, ordem dos cards, auto‑start)
+- `icons/` (uploads de ícones)
+- `dockerfiles/` (Dockerfiles gerados/editados)
+- `.env`
 
-1. Generate service files with correct paths automatically
-2. Install services to `/etc/systemd/system/`
-3. Enable services to start on boot
-4. Start services immediately
+Esses itens são criados automaticamente na primeira execução/instalação.
 
-### Manual Service Management
+### 🧭 Dicas de uso
 
-If you chose system-wide installation, manage the service with:
+- **Top CPU/RAM**: clique em **CPU** ou **RAM** no widget “Status do Sistema”.
+  - ✅ “Apenas containers” (padrão): usa `docker stats`
+  - ⛔ desmarcado: lista processos do sistema (tipo `htop`)
+  - Sempre mostra **no máximo 10 itens**
 
-```bash
-# Start the service
-sudo systemctl start docker-web-control
+### 📡 API (principais endpoints)
 
-# Stop the service
-sudo systemctl stop docker-web-control
+- `GET /api/containers`
+- `POST /api/containers/{id}/start|stop|restart|delete`
+- `POST /api/containers/{id}/restart-policy`
+- `GET /api/groups` / `POST /api/groups`
+- `GET /api/autostart` / `POST /api/autostart`
+- `GET /api/container-aliases` / `POST /api/container-aliases`
+- `POST /api/upload-icon`
+- `GET /api/bing-wallpaper?mkt=pt-BR|en-US`
+- `GET /api/system-stats`
+- `GET /api/system-top?scope=containers|processes&sort=cpu|mem&limit=10`
 
-# Restart the service
-sudo systemctl restart docker-web-control
+### 🧩 Auto-start no boot (opcional)
 
-# Check status
-sudo systemctl status docker-web-control
-
-# View logs
-sudo journalctl -u docker-web-control -f
-
-# Enable on boot
-sudo systemctl enable docker-web-control
-
-# Disable on boot
-sudo systemctl disable docker-web-control
-```
-
-### For Custom Installations
-
-If you installed in a custom directory and want systemd services:
-
-```bash
-# Run the installer in system mode from your git clone directory
-cd /path/to/docker-web-control
-sudo ./install.sh --system
-```
-
-## 📡 API Endpoints
-
-### Containers
-
-- `GET /api/containers` - List all containers
-- `POST /api/containers/{id}/start` - Start a container
-- `POST /api/containers/{id}/stop` - Stop a container
-- `POST /api/containers/{id}/restart` - Restart a container
-- `POST /api/containers/{id}/restart-policy` - Update restart policy
-
-### Groups
-
-- `GET /api/groups` - List all groups
-- `POST /api/groups` - Save groups configuration
-  - `aliases` entries can include: `alias`, `icon`, and `order` (integer)
-
-### Auto-start
-
-- `GET /api/autostart` - Get auto-start configuration
-- `POST /api/autostart` - Update auto-start configuration
-
-### Container Aliases
-
-- `GET /api/container-aliases` - List container aliases
-- `POST /api/container-aliases` - Save container aliases
-  - `aliases` entries can include: `alias`, `icon`, and `order` (integer)
-
-## ↕ Card Ordering
-
-Use the `↕ Organizar` button to enable drag-and-drop mode, then drag cards to rearrange them.
-The order is saved automatically and persists across reloads.
-
-### Icon Upload
-
-- `POST /api/upload-icon` - Upload an icon image (multipart/form-data)
-  - Accepts: PNG, JPG, JPEG, GIF, SVG, WEBP, ICO
-  - Max size: 5MB
-  - Returns: `{"url": "/icons/filename.ext", "filename": "filename.ext"}`
-
-### Static Files
-
-- `GET /static/*` - Serve static assets (CSS, JS, translations)
-- `GET /icons/*` - Serve uploaded icon images
-
-## 🖼️ Icon Management
-
-### Uploading Icons
-
-You can add custom icons to containers and groups in two ways:
-
-1. **URL Method**: Enter an external icon URL directly in the icon field
-2. **Upload Method**: Click the "📤 Upload" button to upload an image file
-
-**Supported formats**: PNG, JPG, JPEG, GIF, SVG, WEBP, ICO
-**Maximum file size**: 5MB
-
-Uploaded icons are stored in the `icons/` directory and are automatically served by the application.
-
-### Using Icons
-
-1. Click the edit (✏️) button next to a container or group name
-2. Enter an alias (optional)
-3. Either enter an icon URL or click "📤 Upload" to upload an image
-4. Click "Salvar" (Save) to apply changes
-
-Icons will appear next to container and group names throughout the interface.
-
-## 🛠️ Project Structure
-
-```
-docker-web-control/
-├── server.py                    # Main Python backend server
-├── autostart.py                 # Auto-start script
-├── install.sh                   # Installation script
-├── restart.sh                   # Server restart script
-├── uninstall.sh                 # Uninstall script
-├── requirements.txt             # Python dependencies
-├── .env.example                 # Example configuration file
-├── index.html                   # Main HTML interface
-├── static/
-│   ├── app.js                   # Frontend JavaScript
-│   ├── styles.css               # CSS styles
-│   └── translations.json        # i18n translations
-├── data/                        # Runtime data (gitignored)
-├── icons/                       # Uploaded icons (gitignored; icons/.gitkeep tracked)
-├── dockerfiles/                 # Runtime Dockerfiles (gitignored)
-├── docker-web-control.service   # Systemd service example
-├── docker-web-control-autostart.service # Systemd auto-start example
-└── README.md                    # This file
-```
-
-## 🔒 Runtime Data (Not Committed)
-
-This project stores user/runtime state locally and it is intentionally excluded from git (public repo safety):
-
-- `data/` (groups, aliases, card order, autostart settings)
-  - `data/groups.json`
-  - `data/group_aliases.json`
-  - `data/container_aliases.json`
-  - `data/autostart.json`
-- `icons/` (uploaded icon files)
-- `dockerfiles/` (generated/edited Dockerfiles and optional `.env` files)
-- `.env` (local environment configuration)
-
-These files/folders are created automatically on first run (and by the installer) and should never be pushed.
-
-## 🔒 Security
-
-- Commands are executed with `shlex.quote()` protection against shell injection
-- Server runs with the same permissions as the process owner
-- Configurable timeout prevents hanging operations
-- No external dependencies required
-
-## 🌐 Multi-language Support
-
-The interface supports multiple languages through the `translations.json` file. Currently available:
-
-- Portuguese (Brazil) - `pt-BR`
-- English - `en`
-
-To change the language, use the language selector in the top bar.
-
-## 🐛 Troubleshooting
-
-### Docker permission denied
-
-If you get permission errors when running Docker commands:
-
-```bash
-# Add your user to the docker group
-sudo usermod -aG docker $USER
-
-# Apply the group change
-newgrp docker
-
-# Or logout and login again
-```
-
-### Port already in use
-
-If port 8088 is already in use, edit the `.env` file and change the PORT value:
-
-```bash
-PORT=8089  # Or any other available port
-```
-
-### Server not starting
-
-Check if Python 3 is installed:
-
-```bash
-python3 --version
-```
-
-Check the logs:
-
-```bash
-tail -f server.log
-```
-
-### Containers not showing
-
-Verify Docker is running:
-
-```bash
-docker ps
-```
-
-Test the API directly:
-
-```bash
-curl http://localhost:8088/api/containers
-```
-
-## 📝 Auto-start Setup
-
-Docker Web Control includes an auto-start feature that can automatically start containers or groups when the system boots.
-
-See [AUTOSTART_SETUP.md](AUTOSTART_SETUP.md) for detailed instructions.
-
-Quick setup:
-
-```bash
-# Copy the autostart service file
-sudo cp docker-autostart.service /etc/systemd/system/
-
-# Edit to match your installation path
-sudo nano /etc/systemd/system/docker-autostart.service
-
-# Enable and start
-sudo systemctl daemon-reload
-sudo systemctl enable docker-autostart
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 👨‍💼 Author
-
-**Mathias Vinicius**
-
-- GitHub: [@mathiasvinicius](https://github.com/mathiasvinicius)
-
-## 🙏 Acknowledgments
-
-- Built with Python's built-in HTTP server - no external web framework required
-- Uses Docker CLI for container management
-- Pure HTML/CSS/JavaScript frontend - no build step needed
-
-## 📚 Additional Documentation
-
-- [Local Development Guide](LOCAL_GUIDE.md) - Tips for local development
-- [Auto-start Setup](AUTOSTART_SETUP.md) - Configure auto-start on system boot
+Veja o guia: `AUTOSTART_SETUP.md`.
 
 ---
 
-**Docker Web Control** - Simple, powerful Docker container management from your browser.
+## 🇺🇸 English
+
+### ✨ Highlights
+
+- 🎴 **Visual cards**: standalone containers + groups
+- ↕ **Drag & drop ordering** (persisted like aliases/icons)
+- 🧩 **Groups**: create, add/remove containers, batch actions
+- 🚀 **Auto-start** per container or group (updates Docker restart policy)
+- 🌄 **Optional Bing wallpaper** + panel transparency control
+- 🕒 **CasaOS‑like widgets**: clock + system status (CPU/RAM) with Top 10 (containers or processes)
+- 🏷️ **Aliases & icons** (with icon upload)
+- 🧱 **Create containers** via Dockerfile or CLI command
+- 📦 **Export** container/group as ZIP
+- 🌐 **Languages**: PT‑BR and EN
+
+### ✅ Requirements
+
+- Docker installed and running
+- Python 3.10+
+- Permission to run `docker` (e.g., user in the `docker` group)
+
+### 🚀 Install (recommended: /opt + systemd)
+
+```bash
+git clone https://github.com/mathiasvinicius/docker-web-control.git
+cd docker-web-control
+sudo ./install.sh --system
+```
+
+Open: `http://localhost:8088`
+
+### 🔄 Update
+
+```bash
+cd docker-web-control
+git pull
+sudo ./install.sh --update
+```
+
+### ⚙️ Configuration (`.env`)
+
+`server.py` and `autostart.py` load `.env` automatically (without overriding existing env vars).
+
+```bash
+HOST=0.0.0.0
+PORT=8088
+DOCKER_TIMEOUT=30
+# DEBUG=1
+```
+
+### 🗂️ Local data (not committed)
+
+Because this is a public repo, runtime/user state stays out of git:
+
+- `data/` (groups, aliases/icons, card order, auto‑start)
+- `icons/` (uploaded icons)
+- `dockerfiles/` (generated/edited Dockerfiles)
+- `.env`
+
+These files/folders are created automatically on first run/install.
+
+### 🧭 Usage tips
+
+- **Top CPU/RAM**: click **CPU** or **RAM** in the “System status” widget.
+  - ✅ “Only containers” (default): uses `docker stats`
+  - ⛔ unchecked: shows system processes (htop‑like)
+  - Always shows **up to 10 items**
+
+### 📡 API (main endpoints)
+
+- `GET /api/containers`
+- `POST /api/containers/{id}/start|stop|restart|delete`
+- `POST /api/containers/{id}/restart-policy`
+- `GET /api/groups` / `POST /api/groups`
+- `GET /api/autostart` / `POST /api/autostart`
+- `GET /api/container-aliases` / `POST /api/container-aliases`
+- `POST /api/upload-icon`
+- `GET /api/bing-wallpaper?mkt=pt-BR|en-US`
+- `GET /api/system-stats`
+- `GET /api/system-top?scope=containers|processes&sort=cpu|mem&limit=10`
+
+### 🧩 Auto-start on boot (optional)
+
+See: `AUTOSTART_SETUP.md`.
+
+---
+
+## 📄 License
+
+MIT — see `LICENSE`.
