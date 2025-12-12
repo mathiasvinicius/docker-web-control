@@ -7,6 +7,7 @@ const state = {
   currentLang: "pt-BR",
   filter: "",
   runningOnly: false,
+  organizeMode: false,
   autostart: { groups: [], containers: [] },
   pinnedEmptyGroups: [],
 };
@@ -79,9 +80,11 @@ const dom = {
   newGroup: document.getElementById("new-group"),
   newFromDockerfile: document.getElementById("new-from-dockerfile"),
   newFromCommand: document.getElementById("new-from-command"),
+  organizeToggle: document.getElementById("toggle-organize"),
 };
 
 let toastTimer;
+const dragState = { draggingCard: null };
 const defaultTranslations = {
   "pt-BR": {},
   en: {},
@@ -90,6 +93,7 @@ const defaultTranslations = {
 async function init() {
   await loadTranslations();
   state.pinnedEmptyGroups = loadPinnedEmptyGroups();
+  updateOrganizeModeUI();
   attachEvents();
   await loadAll();
 }
@@ -130,6 +134,167 @@ function attachEvents() {
   if (dom.newGroup) {
     dom.newGroup.addEventListener("click", openNewGroup);
   }
+
+  if (dom.organizeToggle) {
+    dom.organizeToggle.addEventListener("click", () => setOrganizeMode(!state.organizeMode));
+  }
+
+  if (dom.cardsContainer) {
+    dom.cardsContainer.addEventListener("dragover", handleCardsContainerDragOver);
+    dom.cardsContainer.addEventListener("drop", (event) => {
+      if (state.organizeMode) event.preventDefault();
+    });
+  }
+}
+
+function parseOrderValue(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return null;
+  return Math.trunc(num);
+}
+
+function updateOrganizeModeUI() {
+  document.body.classList.toggle("organize-mode", state.organizeMode);
+
+  if (dom.filterInput) dom.filterInput.disabled = state.organizeMode;
+  if (dom.runningOnly) dom.runningOnly.disabled = state.organizeMode;
+
+  if (dom.organizeToggle) {
+    dom.organizeToggle.classList.toggle("active", state.organizeMode);
+    dom.organizeToggle.textContent = state.organizeMode ? "✓ Organizando" : "↕ Organizar";
+    dom.organizeToggle.title = state.organizeMode
+      ? "Clique para sair do modo organizar"
+      : "Reorganizar cards (arrastar e soltar)";
+  }
+}
+
+function setOrganizeMode(enabled) {
+  state.organizeMode = Boolean(enabled);
+
+  if (state.organizeMode) {
+    state.filter = "";
+    if (dom.filterInput) dom.filterInput.value = "";
+    state.runningOnly = false;
+    if (dom.runningOnly) dom.runningOnly.checked = false;
+  }
+
+  updateOrganizeModeUI();
+  render();
+
+  showToast(state.organizeMode ? "Modo organizar ativo: arraste os cards." : "Modo organizar desativado.");
+}
+
+function ensureGroupAliasObject(groupName) {
+  const meta = state.groupAliases?.[groupName];
+  if (meta && typeof meta === "object") return meta;
+  if (typeof meta === "string" && meta.trim()) {
+    state.groupAliases[groupName] = { alias: meta.trim() };
+    return state.groupAliases[groupName];
+  }
+  state.groupAliases[groupName] = {};
+  return state.groupAliases[groupName];
+}
+
+function ensureContainerAliasObject(containerId) {
+  const meta = state.containerAliases?.[containerId];
+  if (meta && typeof meta === "object") return meta;
+  if (typeof meta === "string" && meta.trim()) {
+    state.containerAliases[containerId] = { alias: meta.trim() };
+    return state.containerAliases[containerId];
+  }
+  state.containerAliases[containerId] = {};
+  return state.containerAliases[containerId];
+}
+
+function applyCardDragMeta(card, cardType, cardKey) {
+  if (!card) return;
+  card.dataset.cardType = cardType;
+  card.dataset.cardKey = cardKey;
+
+  const isPinnedEmpty = card.classList.contains("pinned-empty-group");
+  card.draggable = state.organizeMode && !isPinnedEmpty;
+
+  card.addEventListener("dragstart", (event) => {
+    if (!state.organizeMode) return;
+    if (card.classList.contains("pinned-empty-group")) {
+      event.preventDefault();
+      return;
+    }
+
+    dragState.draggingCard = card;
+    card.classList.add("dragging");
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", `${cardType}:${cardKey}`);
+    }
+  });
+
+  card.addEventListener("dragend", () => {
+    if (dragState.draggingCard === card) dragState.draggingCard = null;
+    card.classList.remove("dragging");
+    if (!state.organizeMode) return;
+    persistCardOrderFromDom().catch((error) =>
+      showToast(error.message || "Erro ao salvar organização.", true)
+    );
+  });
+}
+
+function handleCardsContainerDragOver(event) {
+  if (!state.organizeMode) return;
+  if (!dom.cardsContainer) return;
+
+  event.preventDefault();
+
+  const dragging = dragState.draggingCard;
+  if (!dragging) return;
+
+  const target = event.target?.closest?.(".group-card-glass");
+  if (!target || target === dragging) return;
+  if (target.classList.contains("pinned-empty-group")) return;
+
+  const rect = target.getBoundingClientRect();
+  const insertAfter = event.clientY > rect.top + rect.height / 2;
+  dom.cardsContainer.insertBefore(dragging, insertAfter ? target.nextSibling : target);
+}
+
+async function persistCardOrderFromDom() {
+  if (!dom.cardsContainer) return;
+
+  const cards = Array.from(dom.cardsContainer.querySelectorAll(".group-card-glass")).filter(
+    (card) =>
+      !card.classList.contains("pinned-empty-group") &&
+      card.dataset.cardType &&
+      card.dataset.cardKey
+  );
+
+  if (!cards.length) return;
+
+  const containerPayload = {};
+
+  cards.forEach((card, index) => {
+    const cardType = card.dataset.cardType;
+    const cardKey = card.dataset.cardKey;
+    const order = index;
+
+    if (cardType === "group") {
+      const meta = ensureGroupAliasObject(cardKey);
+      meta.order = order;
+      return;
+    }
+
+    if (cardType === "container") {
+      const meta = ensureContainerAliasObject(cardKey);
+      meta.order = order;
+      containerPayload[cardKey] = meta;
+    }
+  });
+
+  await Promise.all([
+    persistGroups(null, { renderAfter: false }),
+    saveContainerAliasesBatch(containerPayload),
+  ]);
+
+  showToast("Organização salva.");
 }
 
 async function loadAll() {
@@ -209,7 +374,9 @@ async function loadGroups() {
   };
 }
 
-async function persistGroups(successMessage) {
+async function persistGroups(successMessage, options = {}) {
+  const renderAfter = options.renderAfter !== false;
+
   const response = await fetch("/api/groups", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -221,7 +388,7 @@ async function persistGroups(successMessage) {
   }
   state.groups = body.groups || {};
   state.groupAliases = body.aliases || {};
-  render();
+  if (renderAfter) render();
   if (successMessage) showToast(successMessage);
 }
 
@@ -261,16 +428,34 @@ async function setRestartPolicy(containerId, policy) {
 }
 
 async function saveContainerAlias(containerId, aliasValue, iconValue) {
+  const existingMeta = state.containerAliases?.[containerId];
+  const orderValue = existingMeta && typeof existingMeta === "object" ? parseOrderValue(existingMeta.order) : null;
+  const payload = { alias: aliasValue || "", icon: iconValue || "" };
+  if (orderValue !== null) payload.order = orderValue;
+
   const response = await fetch("/api/container-aliases", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      aliases: { [containerId]: { alias: aliasValue || "", icon: iconValue || "" } },
+      aliases: { [containerId]: payload },
     }),
   });
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.error || "Não foi possível salvar o apelido.");
+  }
+  state.containerAliases = data.aliases || {};
+}
+
+async function saveContainerAliasesBatch(aliases) {
+  const response = await fetch("/api/container-aliases", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ aliases: aliases || {} }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Não foi possível salvar a organização.");
   }
   state.containerAliases = data.aliases || {};
 }
@@ -560,9 +745,6 @@ function renderCards() {
     (name) => (state.groups?.[name] || []).length === 0
   );
   const pinnedSet = new Set(pinnedEmptyGroups);
-  const groupNames = Object.keys(state.groups || {})
-    .filter((name) => !pinnedSet.has(name))
-    .sort((a, b) => groupLabel(a).localeCompare(groupLabel(b), undefined, { sensitivity: "base" }));
 
   let hasAnyCard = false;
 
@@ -572,41 +754,92 @@ function renderCards() {
     const visibleGroupContainerIds = allGroupContainerIds.filter((id) => visibleContainerIds.has(id));
     const groupCard = createGroupCard(groupName, visibleGroupContainerIds, allGroupContainerIds);
     groupCard.classList.add("pinned-empty-group");
-    dom.cardsContainer.appendChild(groupCard);
-    hasAnyCard = true;
-  });
-
-  groupNames.forEach((groupName) => {
-    const allGroupContainerIds = getGroupContainerIds(groupName);
-    const visibleGroupContainerIds = allGroupContainerIds.filter((id) =>
-      visibleContainerIds.has(id)
-    );
-
-    const label = groupLabel(groupName);
-    const matchesGroupName =
-      hasTerm &&
-      [groupName, label]
-        .filter(Boolean)
-        .some((value) => value.toLowerCase().includes(term));
-
-    const showGroup = hasTerm
-      ? matchesGroupName || visibleGroupContainerIds.length > 0
-      : state.runningOnly
-      ? visibleGroupContainerIds.length > 0
-      : true;
-
-    if (!showGroup) return;
-
-    const groupCard = createGroupCard(groupName, visibleGroupContainerIds, allGroupContainerIds);
+    applyCardDragMeta(groupCard, "group", groupName);
     dom.cardsContainer.appendChild(groupCard);
     hasAnyCard = true;
   });
 
   const selectedGroups = invertGroups();
   const standaloneContainersOnly = getVisibleContainers(false);
+
+  const cards = [];
+
+  Object.keys(state.groups || {})
+    .filter((name) => !pinnedSet.has(name))
+    .forEach((groupName) => {
+      const allGroupContainerIds = getGroupContainerIds(groupName);
+      const visibleGroupContainerIds = allGroupContainerIds.filter((id) => visibleContainerIds.has(id));
+
+      const label = groupLabel(groupName);
+      const matchesGroupName =
+        hasTerm &&
+        [groupName, label]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(term));
+
+      const showGroup = hasTerm
+        ? matchesGroupName || visibleGroupContainerIds.length > 0
+        : state.runningOnly
+        ? visibleGroupContainerIds.length > 0
+        : true;
+
+      if (!showGroup) return;
+
+      cards.push({
+        kind: "group",
+        key: groupName,
+        label,
+        allGroupContainerIds,
+        visibleGroupContainerIds,
+      });
+    });
+
   standaloneContainersOnly.forEach((container) => {
-    const card = createStandaloneCard(container, selectedGroups);
-    dom.cardsContainer.appendChild(card);
+    const label = containerDisplay(container).main;
+    cards.push({ kind: "container", key: container.id, label, container });
+  });
+
+  cards.sort((a, b) => {
+    const orderA =
+      a.kind === "group"
+        ? parseOrderValue(state.groupAliases?.[a.key]?.order)
+        : parseOrderValue(state.containerAliases?.[a.key]?.order);
+    const orderB =
+      b.kind === "group"
+        ? parseOrderValue(state.groupAliases?.[b.key]?.order)
+        : parseOrderValue(state.containerAliases?.[b.key]?.order);
+
+    if (orderA !== null && orderB !== null) {
+      if (orderA !== orderB) return orderA - orderB;
+    } else if (orderA !== null) {
+      return -1;
+    } else if (orderB !== null) {
+      return 1;
+    } else {
+      const typeRankA = a.kind === "group" ? 0 : 1;
+      const typeRankB = b.kind === "group" ? 0 : 1;
+      if (typeRankA !== typeRankB) return typeRankA - typeRankB;
+    }
+
+    const labelCompare = (a.label || "").localeCompare(b.label || "", undefined, { sensitivity: "base" });
+    if (labelCompare !== 0) return labelCompare;
+    return (a.key || "").localeCompare(b.key || "", undefined, { sensitivity: "base" });
+  });
+
+  cards.forEach((entry) => {
+    if (entry.kind === "group") {
+      const groupCard = createGroupCard(
+        entry.key,
+        entry.visibleGroupContainerIds,
+        entry.allGroupContainerIds
+      );
+      applyCardDragMeta(groupCard, "group", entry.key);
+      dom.cardsContainer.appendChild(groupCard);
+    } else {
+      const card = createStandaloneCard(entry.container, selectedGroups);
+      applyCardDragMeta(card, "container", entry.key);
+      dom.cardsContainer.appendChild(card);
+    }
     hasAnyCard = true;
   });
 
@@ -1832,12 +2065,22 @@ async function removeFromGroup(groupName, containerId) {
 async function renameGroup(name, aliasValue, iconValue) {
   const trimmed = (aliasValue || "").trim();
   const iconTrimmed = (iconValue || "").trim();
+  const existingMeta = state.groupAliases?.[name];
+  const existingOrder =
+    existingMeta && typeof existingMeta === "object" ? parseOrderValue(existingMeta.order) : null;
+
   if (!trimmed && !iconTrimmed) {
-    delete state.groupAliases[name];
+    if (existingOrder !== null) {
+      state.groupAliases[name] = { order: existingOrder };
+    } else {
+      delete state.groupAliases[name];
+    }
   } else {
-    state.groupAliases[name] = {};
-    if (trimmed) state.groupAliases[name].alias = trimmed;
-    if (iconTrimmed) state.groupAliases[name].icon = iconTrimmed;
+    const next = {};
+    if (trimmed) next.alias = trimmed;
+    if (iconTrimmed) next.icon = iconTrimmed;
+    if (existingOrder !== null) next.order = existingOrder;
+    state.groupAliases[name] = next;
   }
   await persistGroups("Grupo renomeado (apelido/ícone atualizado).");
 }

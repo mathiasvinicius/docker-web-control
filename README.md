@@ -14,6 +14,7 @@
 
 - 🐳 **Docker Container Management**: Start, stop, restart and delete containers
 - 🎴 **Visual Cards**: Group cards + standalone container cards
+- ↕ **Card Ordering**: Organize cards via drag-and-drop (saved like aliases/icons)
 - 📦 **Group Management**: Create groups, add/remove containers, batch actions
 - 🚀 **Auto-start Configuration**: Set containers or groups to start automatically (updates restart policy)
 - 🏷️ **Aliases & Icons**: Custom names and icons for containers and groups
@@ -166,6 +167,7 @@ sudo ./install.sh --system
 
 - `GET /api/groups` - List all groups
 - `POST /api/groups` - Save groups configuration
+  - `aliases` entries can include: `alias`, `icon`, and `order` (integer)
 
 ### Auto-start
 
@@ -176,6 +178,12 @@ sudo ./install.sh --system
 
 - `GET /api/container-aliases` - List container aliases
 - `POST /api/container-aliases` - Save container aliases
+  - `aliases` entries can include: `alias`, `icon`, and `order` (integer)
+
+## ↕ Card Ordering
+
+Use the `↕ Organizar` button to enable drag-and-drop mode, then drag cards to rearrange them.
+The order is saved automatically and persists across reloads.
 
 ### Icon Upload
 

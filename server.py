@@ -151,23 +151,44 @@ class GroupAliasStore:
         if not self._path.exists():
             self._write({})
 
-    def read(self) -> Dict[str, Dict[str, str]]:
+    def read(self) -> Dict[str, Dict[str, str | int]]:
         with self._lock:
             try:
                 return json.loads(self._path.read_text())
             except (FileNotFoundError, json.JSONDecodeError):
                 return {}
 
-    def _write(self, aliases: Dict[str, Dict[str, str]]) -> None:
+    def _write(self, aliases: Dict[str, Dict[str, str | int]]) -> None:
         with self._lock:
             self._path.write_text(json.dumps(aliases, indent=2))
 
-    def write(self, aliases: Dict[str, Dict[str, str] | str]) -> Dict[str, Dict[str, str]]:
+    def write(self, aliases: Dict[str, Dict[str, str | int] | str]) -> Dict[str, Dict[str, str | int]]:
+        def parse_order(value):
+            if value is None:
+                return None
+            if isinstance(value, bool):
+                return None
+            if isinstance(value, (int, float)):
+                try:
+                    return int(value)
+                except (TypeError, ValueError):
+                    return None
+            if isinstance(value, str):
+                raw = value.strip()
+                if not raw:
+                    return None
+                try:
+                    return int(float(raw))
+                except ValueError:
+                    return None
+            return None
+
         def normalize(value):
             if isinstance(value, dict):
                 return {
                     "alias": str(value.get("alias", "")).strip(),
                     "icon": str(value.get("icon", "")).strip(),
+                    "order": parse_order(value.get("order")),
                 }
             if isinstance(value, str) and value.strip().startswith("{"):
                 try:
@@ -176,24 +197,27 @@ class GroupAliasStore:
                         return {
                             "alias": str(parsed.get("alias", "")).strip(),
                             "icon": str(parsed.get("icon", "")).strip(),
+                            "order": parse_order(parsed.get("order")),
                         }
                 except Exception:
                     pass
-            return {"alias": str(value or "").strip(), "icon": ""}
+            return {"alias": str(value or "").strip(), "icon": "", "order": None}
 
-        sanitized: Dict[str, Dict[str, str]] = {}
+        sanitized: Dict[str, Dict[str, str | int]] = {}
         for name, value in aliases.items():
             key = name.strip()
             if not key:
                 continue
             norm = normalize(value)
-            if not norm["alias"] and not norm["icon"]:
+            if not norm["alias"] and not norm["icon"] and norm.get("order") is None:
                 continue
-            entry: Dict[str, str] = {}
+            entry: Dict[str, str | int] = {}
             if norm["alias"]:
                 entry["alias"] = norm["alias"]
             if norm["icon"]:
                 entry["icon"] = norm["icon"]
+            if norm.get("order") is not None:
+                entry["order"] = norm["order"]
             sanitized[key] = entry
         self._write(sanitized)
         return sanitized
@@ -209,23 +233,44 @@ class ContainerAliasStore:
         if not self._path.exists():
             self._write({})
 
-    def read(self) -> Dict[str, Dict[str, str]]:
+    def read(self) -> Dict[str, Dict[str, str | int]]:
         with self._lock:
             try:
                 return json.loads(self._path.read_text())
             except (FileNotFoundError, json.JSONDecodeError):
                 return {}
 
-    def _write(self, aliases: Dict[str, Dict[str, str]]) -> None:
+    def _write(self, aliases: Dict[str, Dict[str, str | int]]) -> None:
         with self._lock:
             self._path.write_text(json.dumps(aliases, indent=2))
 
-    def write(self, aliases: Dict[str, Dict[str, str] | str]) -> Dict[str, Dict[str, str]]:
+    def write(self, aliases: Dict[str, Dict[str, str | int] | str]) -> Dict[str, Dict[str, str | int]]:
+        def parse_order(value):
+            if value is None:
+                return None
+            if isinstance(value, bool):
+                return None
+            if isinstance(value, (int, float)):
+                try:
+                    return int(value)
+                except (TypeError, ValueError):
+                    return None
+            if isinstance(value, str):
+                raw = value.strip()
+                if not raw:
+                    return None
+                try:
+                    return int(float(raw))
+                except ValueError:
+                    return None
+            return None
+
         def normalize(value):
             if isinstance(value, dict):
                 return {
                     "alias": str(value.get("alias", "")).strip(),
                     "icon": str(value.get("icon", "")).strip(),
+                    "order": parse_order(value.get("order")),
                 }
             if isinstance(value, str) and value.strip().startswith("{"):
                 try:
@@ -234,24 +279,27 @@ class ContainerAliasStore:
                         return {
                             "alias": str(parsed.get("alias", "")).strip(),
                             "icon": str(parsed.get("icon", "")).strip(),
+                            "order": parse_order(parsed.get("order")),
                         }
                 except Exception:
                     pass
-            return {"alias": str(value or "").strip(), "icon": ""}
+            return {"alias": str(value or "").strip(), "icon": "", "order": None}
 
-        sanitized: Dict[str, Dict[str, str]] = {}
+        sanitized: Dict[str, Dict[str, str | int]] = {}
         for cid, value in aliases.items():
             key = cid.strip()
             if not key:
                 continue
             norm = normalize(value)
-            if not norm["alias"] and not norm["icon"]:
+            if not norm["alias"] and not norm["icon"] and norm.get("order") is None:
                 continue
-            entry: Dict[str, str] = {}
+            entry: Dict[str, str | int] = {}
             if norm["alias"]:
                 entry["alias"] = norm["alias"]
             if norm["icon"]:
                 entry["icon"] = norm["icon"]
+            if norm.get("order") is not None:
+                entry["order"] = norm["order"]
             sanitized[key] = entry
         self._write(sanitized)
         return sanitized

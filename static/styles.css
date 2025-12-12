@@ -51,6 +51,10 @@ button.ghost:hover {
   background: rgba(34, 211, 238, 0.2);
 }
 
+button.ghost.active {
+  background: rgba(34, 211, 238, 0.28);
+}
+
 button.small {
   font-size: 0.8rem;
   padding: 0.2rem 0.5rem;
@@ -422,6 +426,36 @@ textarea:focus {
   transition: all 0.4s ease;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   position: relative;
+}
+
+.organize-mode .group-card-glass {
+  cursor: grab;
+  user-select: none;
+}
+
+.organize-mode .group-card-glass:not(.pinned-empty-group) {
+  outline: 1px dashed rgba(34, 211, 238, 0.35);
+  outline-offset: 4px;
+}
+
+.organize-mode .group-card-glass.dragging {
+  opacity: 0.65;
+  transform: scale(0.98);
+}
+
+.organize-mode .group-card-glass:hover {
+  transform: none;
+}
+
+.organize-mode .group-card-glass button,
+.organize-mode .group-card-glass input,
+.organize-mode .group-card-glass select,
+.organize-mode .group-card-glass textarea,
+.organize-mode .group-card-glass .group-card-glass-header,
+.organize-mode .group-card-glass .card-quick-actions,
+.organize-mode .group-card-glass .card-expand-btn,
+.organize-mode .group-card-glass .alias-form {
+  pointer-events: none;
 }
 
 .group-card-glass.pinned-empty-group {
