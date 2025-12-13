@@ -76,17 +76,6 @@ DOCKER_TIMEOUT=30
 # DEBUG=1
 ```
 
-### 🗂️ Dados locais (não sobem no git)
-
-Por ser um repositório público, os dados do usuário ficam fora do git:
-
-- `data/` (grupos, apelidos/ícones, ordem dos cards, auto‑start)
-- `icons/` (uploads de ícones)
-- `dockerfiles/` (Dockerfiles gerados/editados)
-- `.env`
-
-Esses itens são criados automaticamente na primeira execução/instalação.
-
 ### 🧭 Dicas de uso
 
 - **Top CPU/RAM**: clique em **CPU** ou **RAM** no widget “Status do Sistema”.
@@ -162,17 +151,6 @@ PORT=8088
 DOCKER_TIMEOUT=30
 # DEBUG=1
 ```
-
-### 🗂️ Local data (not committed)
-
-Because this is a public repo, runtime/user state stays out of git:
-
-- `data/` (groups, aliases/icons, card order, auto‑start)
-- `icons/` (uploaded icons)
-- `dockerfiles/` (generated/edited Dockerfiles)
-- `.env`
-
-These files/folders are created automatically on first run/install.
 
 ### 🧭 Usage tips
 
