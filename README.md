@@ -36,7 +36,7 @@
 - 🚀 **Auto-start** por container ou grupo (atualiza restart policy no Docker)
 - 🌄 **Fundo Bing opcional** + controle de transparência do painel
 - 🕒 **Widgets (CasaOS‑like)**: relógio + status do sistema (CPU/RAM) com Top 10 (containers ou processos)
-- 🏷️ **Apelidos & ícones** (com upload de ícones)
+- 🏷️ **Apelidos, ícones & URLs**: personalize nomes, ícones (com upload) e URLs clicáveis para acesso rápido
 - 🧱 **Criar containers** via Dockerfile ou comando CLI
 - 📦 **Exportar** container/grupo como ZIP
 - 🌐 **Idiomas**: PT‑BR e EN
@@ -121,7 +121,7 @@ Veja o guia: `AUTOSTART_SETUP.md`.
 - 🚀 **Auto-start** per container or group (updates Docker restart policy)
 - 🌄 **Optional Bing wallpaper** + panel transparency control
 - 🕒 **CasaOS‑like widgets**: clock + system status (CPU/RAM) with Top 10 (containers or processes)
-- 🏷️ **Aliases & icons** (with icon upload)
+- 🏷️ **Aliases, icons & URLs**: customize names, icons (with upload) and clickable URLs for quick access
 - 🧱 **Create containers** via Dockerfile or CLI command
 - 📦 **Export** container/group as ZIP
 - 🌐 **Languages**: PT‑BR and EN
