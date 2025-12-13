@@ -76,6 +76,15 @@ DOCKER_TIMEOUT=30
 # DEBUG=1
 ```
 
+### 🗂️ Dados locais
+
+Esses itens são criados automaticamente na primeira execução/instalação.
+
+- `data/` (grupos, apelidos/ícones, ordem dos cards, auto‑start)
+- `icons/` (uploads de ícones)
+- `dockerfiles/` (Dockerfiles gerados/editados)
+- `.env`
+
 ### 🧭 Dicas de uso
 
 - **Top CPU/RAM**: clique em **CPU** ou **RAM** no widget “Status do Sistema”.
@@ -151,6 +160,15 @@ PORT=8088
 DOCKER_TIMEOUT=30
 # DEBUG=1
 ```
+
+### 🗂️ Local data
+
+These items are created automatically on first run/install.
+
+- `data/` (groups, aliases/icons, card order, auto‑start)
+- `icons/` (icon uploads)
+- `dockerfiles/` (generated/edited Dockerfiles)
+- `.env`
 
 ### 🧭 Usage tips
 
