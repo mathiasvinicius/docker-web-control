@@ -38,3 +38,5 @@ icons/*
 dist/
 build/
 *.egg-info/
+.playwright-mcp/
+CLAUDE.md

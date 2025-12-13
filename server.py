@@ -7,18 +7,16 @@ The API uses the Docker CLI, so it runs with the same permissions as the process
 from __future__ import annotations
 
 import json
-import ast
 import mimetypes
 import os
 import shlex
 import subprocess
 import threading
-import uuid
 import hashlib
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from pathlib import Path
 from socketserver import ThreadingMixIn
+from pathlib import Path
 from typing import Dict, List
 from urllib.parse import urlparse, parse_qs
 
@@ -47,7 +45,8 @@ class GroupStore:
         self._lock = threading.Lock()
         self._path.parent.mkdir(parents=True, exist_ok=True)
         if not self._path.exists():
-            self._write({})
+            with self._lock:
+                self._path.write_text(json.dumps({}, indent=2))
 
     def read(self) -> Dict[str, List[str]]:
         with self._lock:
@@ -56,12 +55,7 @@ class GroupStore:
             except FileNotFoundError:
                 return {}
             except json.JSONDecodeError:
-                # Corrupted file, reset to avoid crashing the UI.
                 return {}
-
-    def _write(self, groups: Dict[str, List[str]]) -> None:
-        with self._lock:
-            self._path.write_text(json.dumps(groups, indent=2))
 
     def write(self, groups: Dict[str, List[str]]) -> Dict[str, List[str]]:
         sanitized = {
@@ -69,7 +63,8 @@ class GroupStore:
             for name, container_ids in groups.items()
             if name.strip()
         }
-        self._write(sanitized)
+        with self._lock:
+            self._path.write_text(json.dumps(sanitized, indent=2))
         return sanitized
 
 
@@ -81,7 +76,8 @@ class AutostartStore:
         self._lock = threading.Lock()
         self._path.parent.mkdir(parents=True, exist_ok=True)
         if not self._path.exists():
-            self._write({"groups": [], "containers": []})
+            with self._lock:
+                self._path.write_text(json.dumps({"groups": [], "containers": []}, indent=2))
 
     def read(self) -> Dict[str, List[str]]:
         with self._lock:
@@ -92,16 +88,13 @@ class AutostartStore:
             except json.JSONDecodeError:
                 return {"groups": [], "containers": []}
 
-    def _write(self, config: Dict[str, List[str]]) -> None:
-        with self._lock:
-            self._path.write_text(json.dumps(config, indent=2))
-
     def write(self, config: Dict[str, List[str]]) -> Dict[str, List[str]]:
         sanitized = {
             "groups": list(set(config.get("groups", []))),
             "containers": list(set(config.get("containers", [])))
         }
-        self._write(sanitized)
+        with self._lock:
+            self._path.write_text(json.dumps(sanitized, indent=2))
         return sanitized
 
 
@@ -113,7 +106,8 @@ class GroupAliasStore:
         self._lock = threading.Lock()
         self._path.parent.mkdir(parents=True, exist_ok=True)
         if not self._path.exists():
-            self._write({})
+            with self._lock:
+                self._path.write_text(json.dumps({}, indent=2))
 
     def read(self) -> Dict[str, Dict[str, str]]:
         with self._lock:
@@ -121,10 +115,6 @@ class GroupAliasStore:
                 return json.loads(self._path.read_text())
             except (FileNotFoundError, json.JSONDecodeError):
                 return {}
-
-    def _write(self, aliases: Dict[str, Dict[str, str]]) -> None:
-        with self._lock:
-            self._path.write_text(json.dumps(aliases, indent=2))
 
     def write(self, aliases: Dict[str, Dict[str, str] | str]) -> Dict[str, Dict[str, str]]:
         def normalize(value):
@@ -135,13 +125,13 @@ class GroupAliasStore:
                 }
             if isinstance(value, str) and value.strip().startswith("{"):
                 try:
-                    parsed = ast.literal_eval(value)
+                    parsed = json.loads(value)
                     if isinstance(parsed, dict):
                         return {
                             "alias": str(parsed.get("alias", "")).strip(),
                             "icon": str(parsed.get("icon", "")).strip(),
                         }
-                except Exception:
+                except (json.JSONDecodeError, ValueError):
                     pass
             return {"alias": str(value or "").strip(), "icon": ""}
 
@@ -159,7 +149,8 @@ class GroupAliasStore:
             if norm["icon"]:
                 entry["icon"] = norm["icon"]
             sanitized[key] = entry
-        self._write(sanitized)
+        with self._lock:
+            self._path.write_text(json.dumps(sanitized, indent=2))
         return sanitized
 
 
@@ -171,7 +162,8 @@ class ContainerAliasStore:
         self._lock = threading.Lock()
         self._path.parent.mkdir(parents=True, exist_ok=True)
         if not self._path.exists():
-            self._write({})
+            with self._lock:
+                self._path.write_text(json.dumps({}, indent=2))
 
     def read(self) -> Dict[str, Dict[str, str]]:
         with self._lock:
@@ -179,10 +171,6 @@ class ContainerAliasStore:
                 return json.loads(self._path.read_text())
             except (FileNotFoundError, json.JSONDecodeError):
                 return {}
-
-    def _write(self, aliases: Dict[str, Dict[str, str]]) -> None:
-        with self._lock:
-            self._path.write_text(json.dumps(aliases, indent=2))
 
     def write(self, aliases: Dict[str, Dict[str, str] | str]) -> Dict[str, Dict[str, str]]:
         def normalize(value):
@@ -193,13 +181,13 @@ class ContainerAliasStore:
                 }
             if isinstance(value, str) and value.strip().startswith("{"):
                 try:
-                    parsed = ast.literal_eval(value)
+                    parsed = json.loads(value)
                     if isinstance(parsed, dict):
                         return {
                             "alias": str(parsed.get("alias", "")).strip(),
                             "icon": str(parsed.get("icon", "")).strip(),
                         }
-                except Exception:
+                except (json.JSONDecodeError, ValueError):
                     pass
             return {"alias": str(value or "").strip(), "icon": ""}
 
@@ -217,7 +205,8 @@ class ContainerAliasStore:
             if norm["icon"]:
                 entry["icon"] = norm["icon"]
             sanitized[key] = entry
-        self._write(sanitized)
+        with self._lock:
+            self._path.write_text(json.dumps(sanitized, indent=2))
         return sanitized
 
 
@@ -229,29 +218,24 @@ class DockerCommandError(RuntimeError):
 
 
 def run_docker_command(args: List[str]) -> str:
-    """Executa comandos Docker diretamente no shell, como comandos locais."""
-    # Escapa os argumentos para evitar injeção de comandos
-    escaped_args = [shlex.quote(arg) for arg in args]
-    command = "docker " + " ".join(escaped_args)
-
+    """Executa comandos Docker diretamente, sem shell intermediário."""
+    command = ["docker"] + args
     try:
         completed = subprocess.run(
             command,
-            shell=True,
             capture_output=True,
             text=True,
             check=False,
             timeout=DOCKER_TIMEOUT,
-            executable="/bin/bash",
         )
     except subprocess.TimeoutExpired:
         raise DockerCommandError(
-            [command],
+            command,
             f"Comando excedeu o tempo limite de {DOCKER_TIMEOUT}s; "
             "verifique se o container requer interação manual.",
         )
     if completed.returncode != 0:
-        raise DockerCommandError([command], completed.stderr.strip())
+        raise DockerCommandError(command, completed.stderr.strip())
     return completed.stdout
 
 
@@ -318,6 +302,9 @@ def ensure_autostart_running(autostart_cfg: Dict[str, List[str]], groups: Dict[s
 def fetch_containers() -> List[Dict[str, str]]:
     stdout = run_docker_command(["ps", "-a", "--no-trunc", "--format", "{{json .}}"])
     containers: List[Dict[str, str]] = []
+    container_ids: List[str] = []
+
+    # Primeiro passo: parsear a listagem
     for line in stdout.splitlines():
         line = line.strip()
         if not line:
@@ -334,18 +321,7 @@ def fetch_containers() -> List[Dict[str, str]]:
             or labels.get("icon")
             or labels.get("org.opencontainers.image.logo")
         )
-
-        # Buscar restart policy do container
-        restart_policy = "no"
-        try:
-            inspect_output = run_docker_command([
-                "inspect", container_id,
-                "--format", "{{.HostConfig.RestartPolicy.Name}}"
-            ])
-            restart_policy = inspect_output.strip()
-        except DockerCommandError:
-            pass  # Se falhar, usar "no" como padrão
-
+        container_ids.append(container_id)
         containers.append(
             {
                 "id": container_id,
@@ -358,9 +334,33 @@ def fetch_containers() -> List[Dict[str, str]]:
                 "project": labels.get("com.docker.compose.project"),
                 "mounts": raw.get("Mounts"),
                 "icon": icon,
-                "restart_policy": restart_policy,
+                "restart_policy": "no",
             }
         )
+
+    # Segundo passo: buscar restart policies em batch (uma única chamada)
+    if container_ids:
+        try:
+            inspect_output = run_docker_command([
+                "inspect",
+                "--format", "{{.Id}}:{{.HostConfig.RestartPolicy.Name}}",
+            ] + container_ids)
+
+            # Criar mapa de id -> policy
+            policy_map: Dict[str, str] = {}
+            for line in inspect_output.strip().splitlines():
+                if ":" in line:
+                    cid, policy = line.split(":", 1)
+                    policy_map[cid] = policy.strip()
+
+            # Atualizar containers com as policies
+            for container in containers:
+                full_id = container["id"]
+                if full_id in policy_map:
+                    container["restart_policy"] = policy_map[full_id]
+        except DockerCommandError:
+            pass  # Se falhar, manter "no" como padrão
+
     return containers
 
 
@@ -506,7 +506,7 @@ class DockerControlHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "Aliases must be an object"}, code=400)
             return
         existing = self.server.container_alias_store.read()
-        merged = {**existing, **{k: str(v) for k, v in aliases.items()}}
+        merged = {**existing, **aliases}
         saved = self.server.container_alias_store.write(merged)
         self._send_json({"aliases": saved})
 
@@ -581,7 +581,6 @@ class DockerControlHandler(BaseHTTPRequestHandler):
 
     def _handle_upload_icon(self) -> None:
         """Handle icon file upload with multipart/form-data."""
-        import sys
         content_type = self.headers.get("Content-Type", "")
         if not content_type.startswith("multipart/form-data"):
             self._send_json({"error": "Content-Type must be multipart/form-data"}, code=400)
@@ -611,32 +610,17 @@ class DockerControlHandler(BaseHTTPRequestHandler):
 
         body = self.rfile.read(content_length)
 
-        # Debug logging
-        print(f"DEBUG: Content-Type: {content_type}", file=sys.stderr)
-        print(f"DEBUG: Boundary: {boundary}", file=sys.stderr)
-        print(f"DEBUG: Content-Length: {content_length}", file=sys.stderr)
-        print(f"DEBUG: Body length: {len(body)}", file=sys.stderr)
-
         # Parse multipart data
         boundary_bytes = f"--{boundary}".encode()
         parts = body.split(boundary_bytes)
-
-        # Debug: log parts information
-        print(f"DEBUG: Number of parts: {len(parts)}", file=sys.stderr)
-        for i, part in enumerate(parts):
-            print(f"DEBUG: Part {i} length: {len(part)}, has Content-Disposition: {b'Content-Disposition' in part}, has filename: {b'filename=' in part}", file=sys.stderr)
-            if b'Content-Disposition' in part:
-                print(f"DEBUG: Part {i} first 300 bytes: {part[:300]}", file=sys.stderr)
 
         file_data = None
         filename = None
 
         for part in parts:
             if b"Content-Disposition" in part and b'filename=' in part:
-                # Split by lines to find Content-Disposition header
                 lines = part.split(b"\r\n")
 
-                # Find the Content-Disposition line
                 disposition_line = None
                 for line in lines:
                     if b"Content-Disposition" in line:
@@ -644,37 +628,24 @@ class DockerControlHandler(BaseHTTPRequestHandler):
                         break
 
                 if disposition_line and 'filename=' in disposition_line:
-                    print(f"DEBUG: Found disposition line: {disposition_line}", file=sys.stderr)
-
-                    # Extract filename (handle both filename="x" and filename=x)
                     if 'filename="' in disposition_line:
                         start = disposition_line.index('filename="') + 10
                         end = disposition_line.index('"', start)
                         filename = disposition_line[start:end]
-                        print(f"DEBUG: Extracted quoted filename: {filename}", file=sys.stderr)
                     elif 'filename=' in disposition_line:
-                        # Handle unquoted filename
                         start = disposition_line.index('filename=') + 9
-                        # Find end (semicolon or end of line)
                         rest = disposition_line[start:]
                         if ';' in rest:
                             filename = rest[:rest.index(';')].strip()
                         else:
                             filename = rest.strip()
-                        print(f"DEBUG: Extracted unquoted filename: {filename}", file=sys.stderr)
 
-                    # Extract file content (after double CRLF)
                     content_start = part.find(b"\r\n\r\n")
-                    print(f"DEBUG: Content start position: {content_start}", file=sys.stderr)
                     if content_start != -1:
                         file_data = part[content_start + 4:]
-                        # Remove trailing CRLF
                         if file_data.endswith(b"\r\n"):
                             file_data = file_data[:-2]
-                        print(f"DEBUG: Extracted file data length: {len(file_data)}", file=sys.stderr)
                     break
-
-        print(f"DEBUG: Final state - filename: {filename}, file_data length: {len(file_data) if file_data else 0}", file=sys.stderr)
 
         if not file_data or not filename:
             self._send_json({"error": "No file found in request"}, code=400)
@@ -699,7 +670,7 @@ class DockerControlHandler(BaseHTTPRequestHandler):
         try:
             with icon_path.open("wb") as f:
                 f.write(file_data)
-        except Exception as e:
+        except IOError as e:
             self._send_json({"error": f"Failed to save file: {str(e)}"}, code=500)
             return
 
