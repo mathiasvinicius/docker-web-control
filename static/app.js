@@ -377,6 +377,24 @@ function parseOrderValue(value) {
   return Math.trunc(num);
 }
 
+function normalizeHttpUrl(raw) {
+  const value = String(raw || "").trim();
+  if (!value) return "";
+  const lower = value.toLowerCase();
+  if (lower.startsWith("http://") || lower.startsWith("https://")) return value;
+  if (lower.startsWith("//")) return `http:${value}`;
+  if (value.startsWith("/") || value.startsWith("#")) return "";
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) return "";
+  return `http://${value}`;
+}
+
+function openExternalUrl(raw) {
+  const url = normalizeHttpUrl(raw);
+  if (!url) return false;
+  window.open(url, "_blank", "noopener,noreferrer");
+  return true;
+}
+
 function updateOrganizeModeUI() {
   document.body.classList.toggle("organize-mode", state.organizeMode);
 
@@ -1039,10 +1057,10 @@ async function setRestartPolicy(containerId, policy) {
   return data.restart_policy || policy;
 }
 
-async function saveContainerAlias(containerId, aliasValue, iconValue) {
+async function saveContainerAlias(containerId, aliasValue, iconValue, urlValue) {
   const existingMeta = state.containerAliases?.[containerId];
   const orderValue = existingMeta && typeof existingMeta === "object" ? parseOrderValue(existingMeta.order) : null;
-  const payload = { alias: aliasValue || "", icon: iconValue || "" };
+  const payload = { alias: aliasValue || "", icon: iconValue || "", url: urlValue || "" };
   if (orderValue !== null) payload.order = orderValue;
 
   const response = await fetch("/api/container-aliases", {
@@ -1627,6 +1645,8 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
 
   const aliasMeta = state.groupAliases?.[groupName];
   const displayName = groupLabel(groupName);
+  const groupUrlRaw = aliasMeta && typeof aliasMeta === "object" ? aliasMeta.url : "";
+  const hasGroupUrl = Boolean(normalizeHttpUrl(groupUrlRaw));
 
   const groupIconAlias = aliasMeta && typeof aliasMeta === "object" ? aliasMeta.icon : "";
   const groupIconContainer = groupContainerIds
@@ -1637,11 +1657,13 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
   const header = document.createElement("div");
   header.className = "group-card-glass-header";
 
+  let iconEl = null;
   if (groupIcon) {
     const icon = document.createElement("img");
     icon.src = groupIcon;
     icon.className = "group-card-glass-icon";
     icon.alt = "";
+    iconEl = icon;
     header.appendChild(icon);
   }
 
@@ -1654,6 +1676,12 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
   const nameEl = document.createElement("div");
   nameEl.className = "group-card-glass-name";
   nameEl.textContent = displayName;
+  if (hasGroupUrl) {
+    nameEl.classList.add("group-link");
+    nameEl.title = t("alias.open_url_title", "Open URL");
+    nameEl.tabIndex = 0;
+    nameEl.setAttribute("role", "link");
+  }
   nameRow.appendChild(nameEl);
 
   const aliasEditor = createGroupAliasEditor(groupName, () => render());
@@ -1808,6 +1836,30 @@ function createGroupCard(groupName, visibleContainerIds, allContainerIds) {
     expandBtn.textContent = expanded ? "▲" : "▼";
   };
 
+  const openGroupUrl = (event) => {
+    if (!hasGroupUrl) return;
+    if (state.organizeMode) return;
+    event.stopPropagation();
+    if (!openExternalUrl(groupUrlRaw)) {
+      showToast(t("alias.invalid_url", "Invalid URL."), true);
+    }
+  };
+
+  if (hasGroupUrl) {
+    nameEl.addEventListener("click", openGroupUrl);
+    nameEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openGroupUrl(event);
+      }
+    });
+    if (iconEl) {
+      iconEl.classList.add("group-link");
+      iconEl.title = t("alias.open_url_title", "Open URL");
+      iconEl.addEventListener("click", openGroupUrl);
+    }
+  }
+
   header.addEventListener("click", (e) => {
     if (e.target.closest("button")) return;
     toggleExpanded();
@@ -1900,14 +1952,20 @@ function createStandaloneCard(container, selectedGroups) {
 
   const display = containerDisplay(container);
 
+  const aliasMeta = state.containerAliases?.[container.id];
+  const containerUrlRaw = aliasMeta && typeof aliasMeta === "object" ? aliasMeta.url : "";
+  const hasContainerUrl = Boolean(normalizeHttpUrl(containerUrlRaw));
+
   const header = document.createElement("div");
   header.className = "group-card-glass-header";
 
+  let iconEl = null;
   if (display.icon || container.icon) {
     const icon = document.createElement("img");
     icon.src = display.icon || container.icon;
     icon.className = "group-card-glass-icon";
     icon.alt = "";
+    iconEl = icon;
     header.appendChild(icon);
   }
 
@@ -1920,6 +1978,12 @@ function createStandaloneCard(container, selectedGroups) {
   const nameEl = document.createElement("div");
   nameEl.className = "group-card-glass-name";
   nameEl.textContent = display.main;
+  if (hasContainerUrl) {
+    nameEl.classList.add("group-link");
+    nameEl.title = t("alias.open_url_title", "Open URL");
+    nameEl.tabIndex = 0;
+    nameEl.setAttribute("role", "link");
+  }
   nameRow.appendChild(nameEl);
 
   const aliasEditor = createAliasEditor(container, () => render());
@@ -1991,6 +2055,30 @@ function createStandaloneCard(container, selectedGroups) {
   };
 
   const toggleExpanded = () => setExpanded(!card.classList.contains("expanded"));
+
+  const openContainerUrl = (event) => {
+    if (!hasContainerUrl) return;
+    if (state.organizeMode) return;
+    event.stopPropagation();
+    if (!openExternalUrl(containerUrlRaw)) {
+      showToast(t("alias.invalid_url", "Invalid URL."), true);
+    }
+  };
+
+  if (hasContainerUrl) {
+    nameEl.addEventListener("click", openContainerUrl);
+    nameEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openContainerUrl(event);
+      }
+    });
+    if (iconEl) {
+      iconEl.classList.add("group-link");
+      iconEl.title = t("alias.open_url_title", "Open URL");
+      iconEl.addEventListener("click", openContainerUrl);
+    }
+  }
 
   header.addEventListener("click", (e) => {
     if (e.target.closest("button")) return;
@@ -2102,6 +2190,11 @@ function createAliasEditor(container, onSaved) {
   iconContainer.appendChild(uploadButton);
   iconContainer.appendChild(fileInput);
 
+  const urlInput = document.createElement("input");
+  urlInput.type = "text";
+  urlInput.placeholder = t("alias.url_label", "URL (optional) e.g., https://example.com");
+  urlInput.value = metaAlias && typeof metaAlias === "object" ? metaAlias.url || "" : "";
+
   const saveAlias = document.createElement("button");
   saveAlias.type = "submit";
   saveAlias.className = "ghost small";
@@ -2119,6 +2212,7 @@ function createAliasEditor(container, onSaved) {
 
   aliasForm.appendChild(aliasRow);
   aliasForm.appendChild(iconContainer);
+  aliasForm.appendChild(urlInput);
   aliasForm.appendChild(actionsRow);
 
   const resetForm = () => {
@@ -2126,6 +2220,7 @@ function createAliasEditor(container, onSaved) {
     aliasInput.value =
       currentMeta && typeof currentMeta === "object" ? currentMeta.alias || "" : currentMeta || "";
     iconInput.value = currentMeta && typeof currentMeta === "object" ? currentMeta.icon || "" : "";
+    urlInput.value = currentMeta && typeof currentMeta === "object" ? currentMeta.url || "" : "";
   };
 
   renameButton.addEventListener("click", (e) => {
@@ -2143,8 +2238,9 @@ function createAliasEditor(container, onSaved) {
     event.preventDefault();
     const trimmed = aliasInput.value.trim();
     const iconTrimmed = iconInput.value.trim();
+    const urlTrimmed = urlInput.value.trim();
     try {
-      await saveContainerAlias(container.id, trimmed, iconTrimmed);
+      await saveContainerAlias(container.id, trimmed, iconTrimmed, urlTrimmed);
       aliasForm.classList.remove("visible");
       if (onSaved) onSaved();
       else render();
@@ -2190,6 +2286,11 @@ function createGroupAliasEditor(groupName, onSaved) {
   iconInput.type = "text";
   iconInput.placeholder = t("alias.icon_label", "Icon (URL)");
   iconInput.value = aliasMeta && typeof aliasMeta === "object" ? aliasMeta.icon || "" : "";
+
+  const urlInput = document.createElement("input");
+  urlInput.type = "text";
+  urlInput.placeholder = t("alias.url_label", "URL (optional) e.g., http://172.16.0.2:3001/");
+  urlInput.value = aliasMeta && typeof aliasMeta === "object" ? aliasMeta.url || "" : "";
 
   const iconContainer = document.createElement("div");
   iconContainer.className = "icon-row";
@@ -2239,6 +2340,19 @@ function createGroupAliasEditor(groupName, onSaved) {
   iconContainer.appendChild(uploadButton);
   iconContainer.appendChild(fileInput);
 
+  const urlRow = document.createElement("div");
+  urlRow.className = "icon-row";
+
+  const urlSpacer = document.createElement("button");
+  urlSpacer.type = "button";
+  urlSpacer.className = "ghost small upload-placeholder";
+  urlSpacer.textContent = t("upload.button", "📤 Upload");
+  urlSpacer.tabIndex = -1;
+  urlSpacer.setAttribute("aria-hidden", "true");
+
+  urlRow.appendChild(urlInput);
+  urlRow.appendChild(urlSpacer);
+
   const saveBtn = document.createElement("button");
   saveBtn.type = "submit";
   saveBtn.className = "ghost small";
@@ -2256,6 +2370,7 @@ function createGroupAliasEditor(groupName, onSaved) {
 
   aliasForm.appendChild(aliasRow);
   aliasForm.appendChild(iconContainer);
+  aliasForm.appendChild(urlRow);
   aliasForm.appendChild(actionsRow);
 
   const resetForm = () => {
@@ -2263,6 +2378,7 @@ function createGroupAliasEditor(groupName, onSaved) {
     aliasInput.value =
       currentMeta && typeof currentMeta === "object" ? currentMeta.alias || "" : currentMeta || "";
     iconInput.value = currentMeta && typeof currentMeta === "object" ? currentMeta.icon || "" : "";
+    urlInput.value = currentMeta && typeof currentMeta === "object" ? currentMeta.url || "" : "";
   };
 
   button.addEventListener("click", (e) => {
@@ -2280,8 +2396,9 @@ function createGroupAliasEditor(groupName, onSaved) {
     event.preventDefault();
     const trimmed = aliasInput.value.trim();
     const iconTrimmed = iconInput.value.trim();
+    const urlTrimmed = urlInput.value.trim();
     try {
-      await renameGroup(groupName, trimmed, iconTrimmed);
+      await renameGroup(groupName, trimmed, iconTrimmed, urlTrimmed);
       aliasForm.classList.remove("visible");
       if (onSaved) onSaved();
       else render();
@@ -2678,14 +2795,15 @@ async function removeFromGroup(groupName, containerId) {
   }
 }
 
-async function renameGroup(name, aliasValue, iconValue) {
+async function renameGroup(name, aliasValue, iconValue, urlValue) {
   const trimmed = (aliasValue || "").trim();
   const iconTrimmed = (iconValue || "").trim();
+  const urlTrimmed = (urlValue || "").trim();
   const existingMeta = state.groupAliases?.[name];
   const existingOrder =
     existingMeta && typeof existingMeta === "object" ? parseOrderValue(existingMeta.order) : null;
 
-  if (!trimmed && !iconTrimmed) {
+  if (!trimmed && !iconTrimmed && !urlTrimmed) {
     if (existingOrder !== null) {
       state.groupAliases[name] = { order: existingOrder };
     } else {
@@ -2695,6 +2813,7 @@ async function renameGroup(name, aliasValue, iconValue) {
     const next = {};
     if (trimmed) next.alias = trimmed;
     if (iconTrimmed) next.icon = iconTrimmed;
+    if (urlTrimmed) next.url = urlTrimmed;
     if (existingOrder !== null) next.order = existingOrder;
     state.groupAliases[name] = next;
   }
