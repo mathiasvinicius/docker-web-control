@@ -566,6 +566,7 @@ class GroupAliasStore:
                 return {
                     "alias": str(value.get("alias", "")).strip(),
                     "icon": str(value.get("icon", "")).strip(),
+                    "url": str(value.get("url", "")).strip(),
                     "order": parse_order(value.get("order")),
                 }
             if isinstance(value, str) and value.strip().startswith("{"):
@@ -575,11 +576,12 @@ class GroupAliasStore:
                         return {
                             "alias": str(parsed.get("alias", "")).strip(),
                             "icon": str(parsed.get("icon", "")).strip(),
+                            "url": str(parsed.get("url", "")).strip(),
                             "order": parse_order(parsed.get("order")),
                         }
                 except Exception:
                     pass
-            return {"alias": str(value or "").strip(), "icon": "", "order": None}
+            return {"alias": str(value or "").strip(), "icon": "", "url": "", "order": None}
 
         sanitized: Dict[str, Dict[str, str | int]] = {}
         for name, value in aliases.items():
@@ -587,13 +589,15 @@ class GroupAliasStore:
             if not key:
                 continue
             norm = normalize(value)
-            if not norm["alias"] and not norm["icon"] and norm.get("order") is None:
+            if not norm["alias"] and not norm["icon"] and not norm["url"] and norm.get("order") is None:
                 continue
             entry: Dict[str, str | int] = {}
             if norm["alias"]:
                 entry["alias"] = norm["alias"]
             if norm["icon"]:
                 entry["icon"] = norm["icon"]
+            if norm["url"]:
+                entry["url"] = norm["url"]
             if norm.get("order") is not None:
                 entry["order"] = norm["order"]
             sanitized[key] = entry
@@ -648,6 +652,7 @@ class ContainerAliasStore:
                 return {
                     "alias": str(value.get("alias", "")).strip(),
                     "icon": str(value.get("icon", "")).strip(),
+                    "url": str(value.get("url", "")).strip(),
                     "order": parse_order(value.get("order")),
                 }
             if isinstance(value, str) and value.strip().startswith("{"):
@@ -657,11 +662,12 @@ class ContainerAliasStore:
                         return {
                             "alias": str(parsed.get("alias", "")).strip(),
                             "icon": str(parsed.get("icon", "")).strip(),
+                            "url": str(parsed.get("url", "")).strip(),
                             "order": parse_order(parsed.get("order")),
                         }
                 except Exception:
                     pass
-            return {"alias": str(value or "").strip(), "icon": "", "order": None}
+            return {"alias": str(value or "").strip(), "icon": "", "url": "", "order": None}
 
         sanitized: Dict[str, Dict[str, str | int]] = {}
         for cid, value in aliases.items():
@@ -669,13 +675,15 @@ class ContainerAliasStore:
             if not key:
                 continue
             norm = normalize(value)
-            if not norm["alias"] and not norm["icon"] and norm.get("order") is None:
+            if not norm["alias"] and not norm["icon"] and not norm["url"] and norm.get("order") is None:
                 continue
             entry: Dict[str, str | int] = {}
             if norm["alias"]:
                 entry["alias"] = norm["alias"]
             if norm["icon"]:
                 entry["icon"] = norm["icon"]
+            if norm["url"]:
+                entry["url"] = norm["url"]
             if norm.get("order") is not None:
                 entry["order"] = norm["order"]
             sanitized[key] = entry
