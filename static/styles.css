@@ -4,6 +4,7 @@
   background-color: #0c1823;
   color: #e8f5ff;
   --containers-panel-opacity: 0.85;
+  --topbar-opacity: 0.75;
 }
 
 *,
@@ -177,8 +178,11 @@ textarea:focus {
   gap: 1rem;
   flex-wrap: wrap;
   padding: 1rem 1.25rem;
-  background: linear-gradient(135deg, #0f2c3d, #0a1f2e);
-  border-bottom: 1px solid rgba(34, 211, 238, 0.12);
+  background: rgba(13, 31, 44, var(--topbar-opacity));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
   position: sticky;
   top: 0;
   z-index: 10;

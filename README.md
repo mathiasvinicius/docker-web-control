@@ -15,6 +15,7 @@
 <summary><strong>🇧🇷 Português (PT‑BR)</strong></summary>
 
 <img src="docs/images/main-interface_pt.png" alt="Docker Web Control - Interface principal (PT-BR)" width="900" />
+<img src="docs/images/edit-interface_pt.png" alt="Docker Web Control - Editar container (PT-BR)" width="900" />
 
 </details>
 
@@ -22,6 +23,7 @@
 <summary><strong>🇺🇸 English</strong></summary>
 
 <img src="docs/images/main-interface_en.png" alt="Docker Web Control - Main interface (EN)" width="900" />
+<img src="docs/images/edit-interface_en.png" alt="Docker Web Control - Edit container (EN)" width="900" />
 
 </details>
 

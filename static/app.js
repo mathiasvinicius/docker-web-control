@@ -119,7 +119,7 @@ function loadBingBackgroundTransparency() {
     if (!raw) return 15;
     const num = Number(raw);
     if (!Number.isFinite(num)) return 15;
-    return clamp(Math.trunc(num), 0, 90);
+    return clamp(Math.trunc(num), 0, 100);
   } catch {
     return 15;
   }
@@ -369,7 +369,7 @@ function attachEvents() {
 
   if (dom.bingTransparency) {
     dom.bingTransparency.addEventListener("input", () => {
-      const value = clamp(Math.trunc(Number(dom.bingTransparency.value)), 0, 90);
+      const value = clamp(Math.trunc(Number(dom.bingTransparency.value)), 0, 100);
       setBingBackgroundTransparency(value);
     });
   }
@@ -471,7 +471,7 @@ function updateBingBackgroundUI() {
 }
 
 function applyContainersPanelOpacity() {
-  const opacity = 1 - clamp(state.bingBackgroundTransparency, 0, 90) / 100;
+  const opacity = 1 - clamp(state.bingBackgroundTransparency, 0, 100) / 100;
   document.documentElement.style.setProperty("--containers-panel-opacity", String(opacity));
 }
 
@@ -481,7 +481,7 @@ function setBingBackgroundPanelOpen(open) {
 }
 
 function setBingBackgroundTransparency(value) {
-  state.bingBackgroundTransparency = clamp(Math.trunc(Number(value)), 0, 90);
+  state.bingBackgroundTransparency = clamp(Math.trunc(Number(value)), 0, 100);
   persistBingBackgroundTransparency();
   applyContainersPanelOpacity();
   updateBingBackgroundUI();
