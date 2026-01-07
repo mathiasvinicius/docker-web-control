@@ -1,6 +1,7 @@
 # Docker Web Control
 
 **Visualize, group and automate Docker containers — in a CasaOS‑inspired web UI.**
+**Versão atual / Current version: 3.3**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
