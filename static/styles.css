@@ -787,6 +787,18 @@ textarea:focus {
   max-width: 100%;
 }
 
+.group-card-glass-name.group-link {
+  text-decoration: underline;
+  text-decoration-color: rgba(165, 243, 252, 0.65);
+  text-underline-offset: 2px;
+}
+
+.group-card-glass-name.group-link:focus {
+  outline: 2px solid rgba(34, 211, 238, 0.45);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .group-card-stats-row {
   display: flex;
   flex-direction: column;
@@ -859,7 +871,8 @@ textarea:focus {
   padding: 0.65rem;
   border-radius: 8px;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column; /* Changed from default row to column to prevent overlap */
+  align-items: stretch;   /* Full width */
   gap: 0.65rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   transition: all 0.3s ease;
@@ -895,6 +908,8 @@ textarea:focus {
   display: flex;
   gap: 0.4rem;
   flex-wrap: wrap;
+  justify-content: flex-start; /* Align buttons to start */
+  margin-top: 0.2rem;
 }
 
 @media (max-width: 700px) {
@@ -915,4 +930,333 @@ textarea:focus {
     max-width: calc(100vw - 2rem);
     font-size: 0.85rem;
   }
+}
+
+/* ===== EDIT CONTAINER MODAL ===== */
+
+.edit-container-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.edit-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.edit-section-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #22d3ee;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.edit-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-bottom: 0.2rem;
+}
+
+.edit-label-inline {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #94a3b8;
+  flex: 1;
+}
+
+.edit-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  color: #e8f5ff;
+  font-size: 0.9rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.15);
+}
+
+.edit-input::placeholder {
+  color: #64748b;
+}
+
+.edit-select,
+.edit-select-small {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  color: #e8f5ff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.edit-select {
+  width: 100%;
+}
+
+.edit-select-small {
+  min-width: 150px;
+}
+
+.edit-select:focus,
+.edit-select-small:focus {
+  outline: none;
+  border-color: #22d3ee;
+}
+
+.edit-select option,
+.edit-select-small option {
+  background: #0f172a;
+  color: #e8f5ff;
+}
+
+.edit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.edit-row:last-child {
+  border-bottom: none;
+}
+
+.edit-row-vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.edit-toggle {
+  width: 36px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #22d3ee;
+}
+
+.edit-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(34, 211, 238, 0.2);
+  appearance: none;
+  cursor: pointer;
+}
+
+.edit-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #22d3ee;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(34, 211, 238, 0.3);
+}
+
+.edit-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #22d3ee;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(34, 211, 238, 0.3);
+}
+
+.memory-slider-container {
+  width: 100%;
+}
+
+.memory-markers {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-top: 0.3rem;
+  padding: 0 2px;
+}
+
+.memory-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #22d3ee;
+  text-align: right;
+  min-width: 80px;
+}
+
+.edit-advanced {
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(34, 211, 238, 0.1);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 0.5rem;
+}
+
+/* ===== EDITABLE LIST COMPONENT ===== */
+
+.editable-list {
+  background: rgba(15, 23, 42, 0.3);
+  border: 1px solid rgba(34, 211, 238, 0.15);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.editable-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.8rem;
+  background: rgba(34, 211, 238, 0.08);
+  border-bottom: 1px solid rgba(34, 211, 238, 0.1);
+}
+
+.editable-list-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e8f5ff;
+}
+
+.editable-list-items {
+  padding: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.editable-list-empty {
+  padding: 0.8rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.editable-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  margin-bottom: 0.4rem;
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.editable-list-row:last-child {
+  margin-bottom: 0;
+}
+
+.editable-list-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.8);
+  color: #e8f5ff;
+  font-size: 0.8rem;
+}
+
+.editable-list-row input:focus {
+  outline: none;
+  border-color: #22d3ee;
+}
+
+.editable-list-row input::placeholder {
+  color: #475569;
+}
+
+.editable-list-arrow {
+  color: #64748b;
+  font-size: 0.9rem;
+  padding: 0 0.2rem;
+  flex-shrink: 0;
+}
+
+.editable-list-row .remove-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: background 0.2s, color 0.2s;
+}
+
+.editable-list-row .remove-btn:hover {
+  background: rgba(248, 113, 113, 0.25);
+  color: #fca5a5;
+}
+
+/* Modal improvements for edit container */
+.modal {
+  max-width: 600px;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal > h3 {
+  flex-shrink: 0;
+}
+
+/* Make any content body scrollable, not just .edit-container-modal */
+.modal > .edit-container-modal,
+.modal > div:not(.modal-actions) {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0; /* Crucial for nested flex scrolling */
+}
+
+.modal > .modal-actions {
+  flex-shrink: 0;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: auto;
+}
+
+/* Scrollbar styling for edit modal */
+.edit-container-modal::-webkit-scrollbar,
+.editable-list-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.edit-container-modal::-webkit-scrollbar-track,
+.editable-list-items::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 3px;
+}
+
+.edit-container-modal::-webkit-scrollbar-thumb,
+.editable-list-items::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.3);
+  border-radius: 3px;
+}
+
+.edit-container-modal::-webkit-scrollbar-thumb:hover,
+.editable-list-items::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.5);
 }

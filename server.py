@@ -923,6 +923,258 @@ def ensure_autostart_running(autostart_cfg: Dict[str, List[str]], groups: Dict[s
     return warnings
 
 
+def fetch_networks() -> List[Dict[str, str]]:
+    """Retorna a lista de redes Docker disponíveis."""
+    stdout = run_docker_command(["network", "ls", "--format", "{{json .}}"])
+    networks: List[Dict[str, str]] = []
+    for line in stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            raw = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        networks.append({
+            "id": raw.get("ID", ""),
+            "name": raw.get("Name", ""),
+            "driver": raw.get("Driver", ""),
+            "scope": raw.get("Scope", ""),
+        })
+    return networks
+
+
+def get_container_details(container_id: str) -> Dict:
+    """Retorna detalhes completos do container via docker inspect."""
+    data = inspect_container(container_id)
+    config = data.get("Config") or {}
+    host_cfg = data.get("HostConfig") or {}
+    network_settings = data.get("NetworkSettings") or {}
+
+    # Parse volumes/binds
+    binds = host_cfg.get("Binds") or []
+    volumes = []
+    for bind in binds:
+        parts = bind.split(":")
+        if len(parts) >= 2:
+            volumes.append({
+                "host": parts[0],
+                "container": parts[1],
+                "mode": parts[2] if len(parts) > 2 else "rw"
+            })
+
+    # Parse environment variables
+    env_list = config.get("Env") or []
+    env_vars = []
+    for env in env_list:
+        if "=" in env:
+            key, value = env.split("=", 1)
+            env_vars.append({"key": key, "value": value})
+
+    # Parse port bindings
+    port_bindings = host_cfg.get("PortBindings") or {}
+    ports = []
+    for container_port, bindings in port_bindings.items():
+        for binding in bindings or []:
+            ports.append({
+                "host_ip": binding.get("HostIp", ""),
+                "host_port": binding.get("HostPort", ""),
+                "container_port": container_port
+            })
+
+    # Get network mode
+    network_mode = host_cfg.get("NetworkMode") or "bridge"
+
+    # Get connected networks
+    networks = network_settings.get("Networks") or {}
+    connected_networks = list(networks.keys())
+
+    # Parse devices
+    devices = host_cfg.get("Devices") or []
+    device_list = []
+    for device in devices:
+        device_list.append({
+            "host": device.get("PathOnHost", ""),
+            "container": device.get("PathInContainer", ""),
+            "permissions": device.get("CgroupPermissions", "rwm")
+        })
+
+    # Get memory limit (in bytes)
+    memory_limit = host_cfg.get("Memory") or 0
+
+    # Get CPU shares
+    cpu_shares = host_cfg.get("CpuShares") or 0
+
+    # Get restart policy
+    restart_policy = (host_cfg.get("RestartPolicy") or {}).get("Name") or "no"
+
+    # Get privileged mode
+    privileged = host_cfg.get("Privileged") or False
+
+    # Get cap_add
+    cap_add = host_cfg.get("CapAdd") or []
+
+    # Get command
+    cmd = config.get("Cmd") or []
+    entrypoint = config.get("Entrypoint") or []
+
+    return {
+        "id": data.get("Id", ""),
+        "name": (data.get("Name") or "").lstrip("/"),
+        "image": config.get("Image", ""),
+        "state": (data.get("State") or {}).get("Status", ""),
+        "network_mode": network_mode,
+        "connected_networks": connected_networks,
+        "volumes": volumes,
+        "env": env_vars,
+        "ports": ports,
+        "devices": device_list,
+        "memory_limit": memory_limit,
+        "cpu_shares": cpu_shares,
+        "restart_policy": restart_policy,
+        "privileged": privileged,
+        "cap_add": cap_add,
+        "cmd": cmd,
+        "entrypoint": entrypoint,
+        "working_dir": config.get("WorkingDir", ""),
+        "user": config.get("User", ""),
+    }
+
+
+def update_container(container_id: str, settings: Dict) -> Dict:
+    """
+    Atualiza um container recriando-o com as novas configurações.
+    Isso é necessário porque muitas configurações não podem ser alteradas em runtime.
+    """
+    # Get current container details
+    current = inspect_container(container_id)
+    current_config = current.get("Config") or {}
+    current_host = current.get("HostConfig") or {}
+    name = (current.get("Name") or "").lstrip("/")
+
+    # Use new name if provided
+    new_name = settings.get("name", name).strip()
+    if not new_name:
+        new_name = name
+
+    # Build new run command
+    image = settings.get("image") or current_config.get("Image") or ""
+    if not image:
+        raise ValueError("Image is required")
+
+    args: List[str] = ["run", "-d"]
+
+    # Name
+    args += ["--name", new_name]
+
+    # Network mode
+    network_mode = settings.get("network_mode", "bridge")
+    if network_mode and network_mode not in ("default", "bridge"):
+        args += ["--network", network_mode]
+
+    # Restart policy
+    restart_policy = settings.get("restart_policy", "no")
+    if restart_policy and restart_policy != "no":
+        args += ["--restart", restart_policy]
+
+    # Volumes
+    volumes = settings.get("volumes") or []
+    for vol in volumes:
+        host = vol.get("host", "").strip()
+        container = vol.get("container", "").strip()
+        mode = vol.get("mode", "rw").strip()
+        if host and container:
+            bind = f"{host}:{container}"
+            if mode and mode != "rw":
+                bind += f":{mode}"
+            args += ["-v", bind]
+
+    # Ports
+    ports = settings.get("ports") or []
+    for port in ports:
+        host_port = str(port.get("host_port", "")).strip()
+        container_port = str(port.get("container_port", "")).strip()
+        host_ip = str(port.get("host_ip", "")).strip()
+        if host_port and container_port:
+            if host_ip and host_ip not in ("0.0.0.0", ""):
+                args += ["-p", f"{host_ip}:{host_port}:{container_port}"]
+            else:
+                args += ["-p", f"{host_port}:{container_port}"]
+
+    # Environment variables
+    env_vars = settings.get("env") or []
+    for env in env_vars:
+        key = env.get("key", "").strip()
+        value = env.get("value", "")
+        if key:
+            args += ["-e", f"{key}={value}"]
+
+    # Devices
+    devices = settings.get("devices") or []
+    for device in devices:
+        host = device.get("host", "").strip()
+        container = device.get("container", "").strip()
+        if host and container:
+            args += ["--device", f"{host}:{container}"]
+
+    # Memory limit
+    memory_limit = settings.get("memory_limit", 0)
+    if memory_limit and int(memory_limit) > 0:
+        args += ["--memory", str(int(memory_limit))]
+
+    # CPU shares
+    cpu_shares = settings.get("cpu_shares", 0)
+    if cpu_shares and int(cpu_shares) > 0:
+        args += ["--cpu-shares", str(int(cpu_shares))]
+
+    # Privileged
+    if settings.get("privileged"):
+        args += ["--privileged"]
+
+    # Cap add
+    cap_add = settings.get("cap_add") or []
+    for cap in cap_add:
+        if cap.strip():
+            args += ["--cap-add", cap.strip()]
+
+    # Working directory
+    working_dir = settings.get("working_dir", "").strip()
+    if working_dir:
+        args += ["-w", working_dir]
+
+    # User
+    user = settings.get("user", "").strip()
+    if user:
+        args += ["-u", user]
+
+    # Image
+    args.append(image)
+
+    # Command
+    cmd = settings.get("cmd") or []
+    if cmd:
+        args += cmd
+
+    # Stop and remove current container
+    try:
+        run_docker_command(["stop", container_id])
+    except DockerCommandError:
+        pass  # Container might already be stopped
+
+    try:
+        run_docker_command(["rm", container_id])
+    except DockerCommandError as e:
+        raise RuntimeError(f"Failed to remove old container: {e.stderr}")
+
+    # Create new container
+    try:
+        run_docker_command(args)
+    except DockerCommandError as e:
+        raise RuntimeError(f"Failed to create new container: {e.stderr}")
+
+    return {"status": "updated", "name": new_name}
+
+
 def fetch_containers() -> List[Dict[str, str]]:
     stdout = run_docker_command(["ps", "-a", "--no-trunc", "--format", "{{json .}}"])
     containers: List[Dict[str, str]] = []
@@ -1057,6 +1309,12 @@ class DockerControlHandler(BaseHTTPRequestHandler):
         if route.startswith("/api/containers/") and route.endswith("/dockerfile"):
             self._handle_get_dockerfile(route)
             return
+        if route.startswith("/api/containers/") and route.endswith("/details"):
+            self._handle_get_container_details(route)
+            return
+        if route == "/api/networks":
+            self._handle_list_networks()
+            return
         self.send_error(HTTPStatus.NOT_FOUND, "Unknown path")
 
     def do_POST(self) -> None:
@@ -1070,6 +1328,9 @@ class DockerControlHandler(BaseHTTPRequestHandler):
             return
         if route.startswith("/api/containers/") and route.endswith("/restart-policy"):
             self._handle_set_restart_policy(route)
+            return
+        if route.startswith("/api/containers/") and route.endswith("/update"):
+            self._handle_update_container(route)
             return
         if route.startswith("/api/containers/") and route.endswith("/dockerfile"):
             self._handle_save_dockerfile(route)
@@ -1199,6 +1460,37 @@ class DockerControlHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
         self.end_headers()
         self.wfile.write(buffer.getvalue())
+
+    def _handle_list_networks(self) -> None:
+        try:
+            networks = fetch_networks()
+            self._send_json({"networks": networks})
+        except DockerCommandError as error:
+            self._send_json({"error": str(error), "details": error.stderr}, code=500)
+
+    def _handle_get_container_details(self, route: str) -> None:
+        remainder = route[len("/api/containers/") :]
+        container_id = remainder.replace("/details", "").strip("/")
+        try:
+            details = get_container_details(container_id)
+            self._send_json(details)
+        except DockerCommandError as error:
+            self._send_json({"error": str(error), "details": error.stderr}, code=500)
+
+    def _handle_update_container(self, route: str) -> None:
+        remainder = route[len("/api/containers/") :]
+        container_id = remainder.replace("/update", "").strip("/")
+        payload = self._read_json_body()
+        if not isinstance(payload, dict):
+            self._send_json({"error": "Invalid payload"}, code=400)
+            return
+        try:
+            result = update_container(container_id, payload)
+            self._send_json(result)
+        except (DockerCommandError, ValueError, RuntimeError) as error:
+            err_msg = str(error)
+            details = getattr(error, "stderr", "") or ""
+            self._send_json({"error": err_msg, "details": details}, code=500)
 
     def _handle_get_dockerfile(self, route: str) -> None:
         remainder = route[len("/api/containers/") :]

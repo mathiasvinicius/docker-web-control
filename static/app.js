@@ -7,11 +7,14 @@ const state = {
   currentLang: "pt-BR",
   filter: "",
   runningOnly: false,
+  autostart: {
+    containers: [], // IDs
+    groups: [], // Names
+  },
   organizeMode: false,
-  bingBackgroundEnabled: false,
+  bingBackgroundEnabled: true,
   bingBackgroundTransparency: 15,
   bingBackgroundPanelOpen: false,
-  autostart: { groups: [], containers: [] },
   pinnedEmptyGroups: [],
   systemTopOpen: false,
   systemTopSort: "cpu",
@@ -23,6 +26,23 @@ const BING_BG_ENABLED_KEY = "dockerControlBingBackgroundEnabled";
 const BING_BG_CACHE_KEY = "dockerControlBingWallpaperCache";
 const BING_BG_TRANSPARENCY_KEY = "dockerControlBingBackgroundTransparency";
 const SYSTEM_TOP_ONLY_CONTAINERS_KEY = "dockerControlSystemTopOnlyContainers";
+const RUNNING_ONLY_KEY = "dockerControlRunningOnly";
+
+function loadRunningOnly() {
+  try {
+    return localStorage.getItem(RUNNING_ONLY_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function persistRunningOnly() {
+  try {
+    localStorage.setItem(RUNNING_ONLY_KEY, state.runningOnly ? "1" : "0");
+  } catch {
+    // ignore
+  }
+}
 
 function loadPinnedEmptyGroups() {
   try {
@@ -78,9 +98,10 @@ function reconcilePinnedEmptyGroups() {
 
 function loadBingBackgroundEnabled() {
   try {
-    return localStorage.getItem(BING_BG_ENABLED_KEY) === "1";
+    // Default to true if not set (null) or explicitly "1". Only false if "0".
+    return localStorage.getItem(BING_BG_ENABLED_KEY) !== "0";
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -229,6 +250,7 @@ const defaultTranslations = {
 async function init() {
   await loadTranslations();
   state.pinnedEmptyGroups = loadPinnedEmptyGroups();
+  state.runningOnly = loadRunningOnly();
   state.bingBackgroundEnabled = loadBingBackgroundEnabled();
   state.bingBackgroundTransparency = loadBingBackgroundTransparency();
   state.systemTopOnlyContainers = loadSystemTopOnlyContainers();
@@ -256,8 +278,10 @@ function attachEvents() {
   }
 
   if (dom.runningOnly) {
+    dom.runningOnly.checked = state.runningOnly;
     dom.runningOnly.addEventListener("change", (event) => {
       state.runningOnly = Boolean(event.target.checked);
+      persistRunningOnly();
       render();
     });
   }
@@ -1929,9 +1953,13 @@ function createContainerItem(container, groupName) {
   exportBtn.title = t("common.export", "Export");
   actions.appendChild(exportBtn);
 
-  const editBtn = createButton("✎", "ghost small", () => openDockerfileEditor(container.id, container.name));
-  editBtn.title = t("containers.edit_dockerfile", "Edit Dockerfile");
-  actions.appendChild(editBtn);
+  const editDockerfileBtn = createButton("✎", "ghost small", () => openDockerfileEditor(container.id, container.name));
+  editDockerfileBtn.title = t("containers.edit_dockerfile", "Edit Dockerfile");
+  actions.appendChild(editDockerfileBtn);
+
+  const editContainerBtn = createButton("⚙", "ghost small", () => openEditContainerModal(container.id));
+  editContainerBtn.title = t("containers.edit_container", "Edit Container Settings");
+  actions.appendChild(editContainerBtn);
 
   if (groupName) {
     const removeBtn = createButton("⨯", "ghost small danger", (e) => {
@@ -2023,12 +2051,19 @@ function createStandaloneCard(container, selectedGroups) {
   exportBtn.title = t("common.export", "Export");
   quickActions.appendChild(exportBtn);
 
-  const editBtn = createButton("✎", "ghost small", (e) => {
+  const editDockerfileBtn = createButton("✎", "ghost small", (e) => {
     e.stopPropagation();
     openDockerfileEditor(container.id, container.name);
   });
-  editBtn.title = t("containers.edit_dockerfile", "Edit Dockerfile");
-  quickActions.appendChild(editBtn);
+  editDockerfileBtn.title = t("containers.edit_dockerfile", "Edit Dockerfile");
+  quickActions.appendChild(editDockerfileBtn);
+
+  const editContainerBtn = createButton("⚙", "ghost small", (e) => {
+    e.stopPropagation();
+    openEditContainerModal(container.id);
+  });
+  editContainerBtn.title = t("containers.edit_container", "Edit Container Settings");
+  quickActions.appendChild(editContainerBtn);
 
   const expandBtn = document.createElement("button");
   expandBtn.className = "card-expand-btn";
@@ -2818,6 +2853,536 @@ async function renameGroup(name, aliasValue, iconValue, urlValue) {
     state.groupAliases[name] = next;
   }
   await persistGroups(t("groups.renamed_toast", "Group updated (alias/icon updated)."));
+}
+
+// ===== CONTAINER EDIT MODAL =====
+
+async function fetchNetworks() {
+  const response = await fetch("/api/networks");
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Failed to fetch networks");
+  return data.networks || [];
+}
+
+async function fetchContainerDetails(containerId) {
+  const response = await fetch(`/api/containers/${containerId}/details`);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Failed to fetch container details");
+  return data;
+}
+
+async function updateContainer(containerId, settings) {
+  const response = await fetch(`/api/containers/${containerId}/update`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Failed to update container");
+  return data;
+}
+
+function createEditableList(items, onUpdate, config = {}) {
+  const {
+    hostLabel = t("edit.host", "Host"),
+    containerLabel = t("edit.container", "Container"),
+    keyLabel = t("edit.key", "Key"),
+    valueLabel = t("edit.value", "Value"),
+    addLabel = t("edit.add", "+ Add"),
+    type = "volume", // volume, env, device, port
+  } = config;
+
+  const container = document.createElement("div");
+  container.className = "editable-list";
+
+  const header = document.createElement("div");
+  header.className = "editable-list-header";
+
+  const titleSpan = document.createElement("span");
+  titleSpan.className = "editable-list-title";
+  titleSpan.textContent = config.title || "";
+
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "ghost small";
+  addBtn.textContent = addLabel;
+
+  header.appendChild(titleSpan);
+  header.appendChild(addBtn);
+  container.appendChild(header);
+
+  const listEl = document.createElement("div");
+  listEl.className = "editable-list-items";
+  container.appendChild(listEl);
+
+  function renderItems() {
+    listEl.innerHTML = "";
+
+    if (items.length === 0) {
+      const emptyMsg = document.createElement("div");
+      emptyMsg.className = "editable-list-empty";
+      emptyMsg.textContent = t("edit.click_add", 'Click "+" to add.');
+      listEl.appendChild(emptyMsg);
+      return;
+    }
+
+    items.forEach((item, index) => {
+      const row = document.createElement("div");
+      row.className = "editable-list-row";
+
+      if (type === "volume" || type === "device") {
+        const hostInput = document.createElement("input");
+        hostInput.type = "text";
+        hostInput.placeholder = hostLabel;
+        hostInput.value = item.host || "";
+        hostInput.addEventListener("input", (e) => {
+          items[index].host = e.target.value;
+          onUpdate(items);
+        });
+
+        const arrow = document.createElement("span");
+        arrow.className = "editable-list-arrow";
+        arrow.textContent = "→";
+
+        const containerInput = document.createElement("input");
+        containerInput.type = "text";
+        containerInput.placeholder = containerLabel;
+        containerInput.value = item.container || "";
+        containerInput.addEventListener("input", (e) => {
+          items[index].container = e.target.value;
+          onUpdate(items);
+        });
+
+        row.appendChild(hostInput);
+        row.appendChild(arrow);
+        row.appendChild(containerInput);
+      } else if (type === "env") {
+        const keyInput = document.createElement("input");
+        keyInput.type = "text";
+        keyInput.placeholder = keyLabel;
+        keyInput.value = item.key || "";
+        keyInput.addEventListener("input", (e) => {
+          items[index].key = e.target.value;
+          onUpdate(items);
+        });
+
+        const eqSign = document.createElement("span");
+        eqSign.className = "editable-list-arrow";
+        eqSign.textContent = "=";
+
+        const valueInput = document.createElement("input");
+        valueInput.type = "text";
+        valueInput.placeholder = valueLabel;
+        valueInput.value = item.value || "";
+        valueInput.addEventListener("input", (e) => {
+          items[index].value = e.target.value;
+          onUpdate(items);
+        });
+
+        row.appendChild(keyInput);
+        row.appendChild(eqSign);
+        row.appendChild(valueInput);
+      } else if (type === "port") {
+        const hostPortInput = document.createElement("input");
+        hostPortInput.type = "text";
+        hostPortInput.placeholder = t("edit.host_port", "Host Port");
+        hostPortInput.value = item.host_port || "";
+        hostPortInput.style.width = "80px";
+        hostPortInput.addEventListener("input", (e) => {
+          items[index].host_port = e.target.value;
+          onUpdate(items);
+        });
+
+        const arrow = document.createElement("span");
+        arrow.className = "editable-list-arrow";
+        arrow.textContent = ":";
+
+        const containerPortInput = document.createElement("input");
+        containerPortInput.type = "text";
+        containerPortInput.placeholder = t("edit.container_port", "Container Port");
+        containerPortInput.value = item.container_port || "";
+        containerPortInput.style.width = "100px";
+        containerPortInput.addEventListener("input", (e) => {
+          items[index].container_port = e.target.value;
+          onUpdate(items);
+        });
+
+        row.appendChild(hostPortInput);
+        row.appendChild(arrow);
+        row.appendChild(containerPortInput);
+      } else if (type === "command") {
+        const cmdInput = document.createElement("input");
+        cmdInput.type = "text";
+        cmdInput.placeholder = t("edit.command", "Command");
+        cmdInput.value = item.value || "";
+        cmdInput.style.flex = "1";
+        cmdInput.addEventListener("input", (e) => {
+          items[index].value = e.target.value;
+          onUpdate(items);
+        });
+        row.appendChild(cmdInput);
+      }
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "icon-button remove-btn";
+      removeBtn.textContent = "×";
+      removeBtn.title = t("edit.remove", "Remove");
+      removeBtn.addEventListener("click", () => {
+        items.splice(index, 1);
+        onUpdate(items);
+        renderItems();
+      });
+
+      row.appendChild(removeBtn);
+      listEl.appendChild(row);
+    });
+  }
+
+  addBtn.addEventListener("click", () => {
+    if (type === "volume" || type === "device") {
+      items.push({ host: "", container: "" });
+    } else if (type === "env") {
+      items.push({ key: "", value: "" });
+    } else if (type === "port") {
+      items.push({ host_port: "", container_port: "" });
+    } else if (type === "command") {
+      items.push({ value: "" });
+    }
+    onUpdate(items);
+    renderItems();
+  });
+
+  renderItems();
+  return container;
+}
+
+async function openEditContainerModal(containerId) {
+  showToast(t("edit.loading", "Loading container details..."));
+
+  let details, networks;
+  try {
+    [details, networks] = await Promise.all([
+      fetchContainerDetails(containerId),
+      fetchNetworks(),
+    ]);
+  } catch (error) {
+    showToast(error.message || t("errors.load_details", "Failed to load container details."), true);
+    return;
+  }
+
+  // Create modal body
+  const body = document.createElement("div");
+  body.className = "edit-container-modal";
+
+  // === BASIC INFO SECTION ===
+  const basicSection = document.createElement("div");
+  basicSection.className = "edit-section";
+
+  // Container name
+  const nameLabel = document.createElement("label");
+  nameLabel.className = "edit-label";
+  nameLabel.textContent = t("edit.container_name", "Container Name");
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.className = "edit-input";
+  nameInput.value = details.name || "";
+  nameInput.placeholder = t("edit.container_name_placeholder", "e.g., my-container");
+
+  // Image
+  const imageLabel = document.createElement("label");
+  imageLabel.className = "edit-label";
+  imageLabel.textContent = t("edit.image", "Docker Image *");
+  const imageInput = document.createElement("input");
+  imageInput.type = "text";
+  imageInput.className = "edit-input";
+  imageInput.value = details.image || "";
+  imageInput.placeholder = t("edit.image_placeholder", "e.g., nginx:latest");
+
+  basicSection.appendChild(nameLabel);
+  basicSection.appendChild(nameInput);
+  basicSection.appendChild(imageLabel);
+  basicSection.appendChild(imageInput);
+
+  // === NETWORK SECTION ===
+  const networkSection = document.createElement("div");
+  networkSection.className = "edit-section";
+
+  const networkLabel = document.createElement("label");
+  networkLabel.className = "edit-label";
+  networkLabel.textContent = t("edit.network", "Network");
+
+  const networkSelect = document.createElement("select");
+  networkSelect.className = "edit-select";
+
+  // Add default options
+  const defaultNetworks = ["bridge", "host", "none"];
+  const allNetworkNames = new Set([
+    ...defaultNetworks,
+    ...networks.map((n) => n.name),
+  ]);
+
+  allNetworkNames.forEach((name) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    if (name === details.network_mode) {
+      option.selected = true;
+    }
+    networkSelect.appendChild(option);
+  });
+
+  networkSection.appendChild(networkLabel);
+  networkSection.appendChild(networkSelect);
+
+  // === PORTS SECTION ===
+  const portsData = [...(details.ports || [])];
+  const portsSection = createEditableList(portsData, () => {}, {
+    title: t("edit.ports", "Ports"),
+    type: "port",
+    addLabel: t("edit.add", "+ Add"),
+  });
+
+  // === VOLUMES SECTION ===
+  const volumesData = [...(details.volumes || [])];
+  const volumesSection = createEditableList(volumesData, () => {}, {
+    title: t("edit.volumes", "Volumes"),
+    hostLabel: t("edit.host_path", "Host Path"),
+    containerLabel: t("edit.container_path", "Container Path"),
+    type: "volume",
+    addLabel: t("edit.add", "+ Add"),
+  });
+
+  // === ENVIRONMENT VARIABLES SECTION ===
+  const envData = [...(details.env || [])];
+  const envSection = createEditableList(envData, () => {}, {
+    title: t("edit.env_vars", "Environment Variables"),
+    keyLabel: t("edit.key", "Key"),
+    valueLabel: t("edit.value", "Value"),
+    type: "env",
+    addLabel: t("edit.add", "+ Add"),
+  });
+
+  // === DEVICES SECTION ===
+  const devicesData = [...(details.devices || [])];
+  const devicesSection = createEditableList(devicesData, () => {}, {
+    title: t("edit.devices", "Devices"),
+    hostLabel: t("edit.host_device", "Host Device"),
+    containerLabel: t("edit.container_device", "Container Device"),
+    type: "device",
+    addLabel: t("edit.add", "+ Add"),
+  });
+
+  // === COMMAND SECTION ===
+  const cmdData = (details.cmd || []).map((c) => ({ value: c }));
+  const cmdSection = createEditableList(cmdData, () => {}, {
+    title: t("edit.command", "Command"),
+    type: "command",
+    addLabel: t("edit.add", "+ Add"),
+  });
+
+  // === ADVANCED SETTINGS SECTION ===
+  const advancedSection = document.createElement("div");
+  advancedSection.className = "edit-section edit-advanced";
+
+  const advancedTitle = document.createElement("h4");
+  advancedTitle.className = "edit-section-title";
+  advancedTitle.textContent = t("edit.advanced", "Advanced Settings");
+  advancedSection.appendChild(advancedTitle);
+
+  // Privileged toggle
+  const privilegedRow = document.createElement("div");
+  privilegedRow.className = "edit-row";
+  const privilegedLabel = document.createElement("label");
+  privilegedLabel.className = "edit-label-inline";
+  privilegedLabel.textContent = t("edit.privileged", "Privileged Mode");
+  const privilegedToggle = document.createElement("input");
+  privilegedToggle.type = "checkbox";
+  privilegedToggle.className = "edit-toggle";
+  privilegedToggle.checked = details.privileged || false;
+  privilegedRow.appendChild(privilegedLabel);
+  privilegedRow.appendChild(privilegedToggle);
+  advancedSection.appendChild(privilegedRow);
+
+  // Memory limit slider
+  const memoryRow = document.createElement("div");
+  memoryRow.className = "edit-row edit-row-vertical";
+  const memoryLabel = document.createElement("label");
+  memoryLabel.className = "edit-label";
+  memoryLabel.textContent = t("edit.memory_limit", "Memory Limit");
+
+  const memorySliderContainer = document.createElement("div");
+  memorySliderContainer.className = "memory-slider-container";
+
+  const memorySlider = document.createElement("input");
+  memorySlider.type = "range";
+  memorySlider.className = "edit-slider";
+  memorySlider.min = "0";
+  memorySlider.max = "12288"; // 12GB in MB
+  memorySlider.step = "128";
+
+  const currentMemoryMB = Math.round((details.memory_limit || 0) / 1024 / 1024);
+  memorySlider.value = String(currentMemoryMB);
+
+  const memoryValue = document.createElement("span");
+  memoryValue.className = "memory-value";
+  memoryValue.textContent = currentMemoryMB > 0 ? `${currentMemoryMB} MB` : t("edit.unlimited", "Unlimited");
+
+  const memoryMarkers = document.createElement("div");
+  memoryMarkers.className = "memory-markers";
+  [0, 256, 512, 1024, 2048, 4096, 8192, 12288].forEach((val) => {
+    const marker = document.createElement("span");
+    marker.textContent = val === 0 ? "0" : val >= 1024 ? `${val / 1024}G` : `${val}`;
+    memoryMarkers.appendChild(marker);
+  });
+
+  memorySlider.addEventListener("input", () => {
+    const val = parseInt(memorySlider.value, 10);
+    memoryValue.textContent = val > 0 ? `${val} MB` : t("edit.unlimited", "Unlimited");
+  });
+
+  memorySliderContainer.appendChild(memorySlider);
+  memorySliderContainer.appendChild(memoryMarkers);
+  memoryRow.appendChild(memoryLabel);
+  memoryRow.appendChild(memorySliderContainer);
+  memoryRow.appendChild(memoryValue);
+  advancedSection.appendChild(memoryRow);
+
+  // CPU shares
+  const cpuRow = document.createElement("div");
+  cpuRow.className = "edit-row";
+  const cpuLabel = document.createElement("label");
+  cpuLabel.className = "edit-label-inline";
+  cpuLabel.textContent = t("edit.cpu_shares", "CPU Priority");
+  const cpuSelect = document.createElement("select");
+  cpuSelect.className = "edit-select-small";
+  [
+    { value: "0", label: t("edit.cpu_default", "Default") },
+    { value: "256", label: t("edit.cpu_low", "Low (256)") },
+    { value: "512", label: t("edit.cpu_medium", "Medium (512)") },
+    { value: "1024", label: t("edit.cpu_high", "High (1024)") },
+    { value: "2048", label: t("edit.cpu_very_high", "Very High (2048)") },
+  ].forEach((opt) => {
+    const option = document.createElement("option");
+    option.value = opt.value;
+    option.textContent = opt.label;
+    if (String(details.cpu_shares || 0) === opt.value) {
+      option.selected = true;
+    }
+    cpuSelect.appendChild(option);
+  });
+  cpuRow.appendChild(cpuLabel);
+  cpuRow.appendChild(cpuSelect);
+  advancedSection.appendChild(cpuRow);
+
+  // Restart policy
+  const restartRow = document.createElement("div");
+  restartRow.className = "edit-row";
+  const restartLabel = document.createElement("label");
+  restartLabel.className = "edit-label-inline";
+  restartLabel.textContent = t("edit.restart_policy", "Restart Policy");
+  const restartSelect = document.createElement("select");
+  restartSelect.className = "edit-select-small";
+  [
+    { value: "no", label: t("edit.restart_no", "No") },
+    { value: "always", label: t("edit.restart_always", "Always") },
+    { value: "unless-stopped", label: t("edit.restart_unless_stopped", "Unless Stopped") },
+    { value: "on-failure", label: t("edit.restart_on_failure", "On Failure") },
+  ].forEach((opt) => {
+    const option = document.createElement("option");
+    option.value = opt.value;
+    option.textContent = opt.label;
+    if (details.restart_policy === opt.value) {
+      option.selected = true;
+    }
+    restartSelect.appendChild(option);
+  });
+  restartRow.appendChild(restartLabel);
+  restartRow.appendChild(restartSelect);
+  advancedSection.appendChild(restartRow);
+
+  // Cap add
+  const capAddRow = document.createElement("div");
+  capAddRow.className = "edit-row edit-row-vertical";
+  const capAddLabel = document.createElement("label");
+  capAddLabel.className = "edit-label";
+  capAddLabel.textContent = t("edit.cap_add", "Capabilities (cap-add)");
+  const capAddInput = document.createElement("input");
+  capAddInput.type = "text";
+  capAddInput.className = "edit-input";
+  capAddInput.placeholder = t("edit.cap_add_placeholder", "e.g., NET_ADMIN, SYS_TIME");
+  capAddInput.value = (details.cap_add || []).join(", ");
+  capAddRow.appendChild(capAddLabel);
+  capAddRow.appendChild(capAddInput);
+  advancedSection.appendChild(capAddRow);
+
+  // Assemble modal body
+  body.appendChild(basicSection);
+  body.appendChild(networkSection);
+
+  const wrapList = (el) => {
+    const wrapper = document.createElement("div");
+    wrapper.style.marginBottom = "1rem";
+    wrapper.appendChild(el);
+    return wrapper;
+  };
+
+  body.appendChild(wrapList(portsSection));
+  body.appendChild(wrapList(volumesSection));
+  body.appendChild(wrapList(envSection));
+  body.appendChild(wrapList(devicesSection));
+  body.appendChild(wrapList(cmdSection));
+
+  body.appendChild(advancedSection);
+
+  console.log("Edit modal opened for:", details);
+
+  // Open modal
+  openModal({
+    title: `${t("edit.title", "Edit Container")} - ${details.name || containerId}`,
+    body,
+    confirmText: t("edit.save", "Save"),
+    onConfirm: async () => {
+      // Collect settings
+      const memoryMB = parseInt(memorySlider.value, 10);
+      const memoryBytes = memoryMB > 0 ? memoryMB * 1024 * 1024 : 0;
+
+      const capAddList = capAddInput.value
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s);
+
+      const settings = {
+        name: nameInput.value.trim(),
+        image: imageInput.value.trim(),
+        network_mode: networkSelect.value,
+        ports: portsData.filter((p) => p.host_port && p.container_port),
+        volumes: volumesData.filter((v) => v.host && v.container),
+        env: envData.filter((e) => e.key),
+        devices: devicesData.filter((d) => d.host && d.container),
+        cmd: cmdData.map((c) => c.value).filter((c) => c),
+        privileged: privilegedToggle.checked,
+        memory_limit: memoryBytes,
+        cpu_shares: parseInt(cpuSelect.value, 10),
+        restart_policy: restartSelect.value,
+        cap_add: capAddList,
+      };
+
+      if (!settings.image) {
+        showToast(t("edit.image_required", "Docker image is required."), true);
+        throw new Error("Image required");
+      }
+
+      try {
+        await updateContainer(containerId, settings);
+        showToast(t("edit.success", "Container updated successfully!"));
+        await loadContainersOnly();
+      } catch (error) {
+        showToast(error.message || t("edit.error", "Failed to update container."), true);
+        throw error;
+      }
+    },
+  });
 }
 
 init();
